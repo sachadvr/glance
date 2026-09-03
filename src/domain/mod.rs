@@ -3,6 +3,7 @@
 mod blame;
 mod commit;
 mod diff;
+mod emphasis;
 mod file;
 
 pub use blame::{Blame, BlameLine};

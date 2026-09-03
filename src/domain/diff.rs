@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use super::emphasis::emphasize_modifications;
 use super::file::FileDiff;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -49,7 +50,7 @@ fn hunk_start(header: &str) -> (usize, usize) {
 
 pub fn diff_rows(file: &FileDiff) -> Vec<DiffRow> {
     let (mut old, mut new) = (0, 0);
-    file
+    let mut rows: Vec<DiffRow> = file
         .lines
         .iter()
         .map(|line| {
@@ -75,7 +76,9 @@ pub fn diff_rows(file: &FileDiff) -> Vec<DiffRow> {
                 _ => DiffRow::new(RowKind::Note, None, None, expand_tabs(line)),
             }
         })
-        .collect()
+        .collect();
+    emphasize_modifications(&mut rows);
+    rows
 }
 
 #[cfg(test)]
