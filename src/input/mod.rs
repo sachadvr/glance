@@ -1,8 +1,11 @@
 //! Reading what git pipes to its pager: one file per format, tried in the order of `DETECTORS`.
 
 mod ansi;
+mod blame;
 mod log;
+mod oneline;
 mod patch;
+mod stash;
 
 use crate::domain::{BlameLine, Commit, FileDiff};
 
@@ -28,8 +31,9 @@ impl Document {
 
 type Detector = fn(&[&str]) -> Option<Document>;
 
-// The first that recognises the text wins. A log printed with -p holds patches: the log goes before the patch.
-const DETECTORS: [Detector; 2] = [log::detect, patch::detect];
+// The first that recognises the text wins. A log printed with -p holds patches, and two blame lines of
+// distinct commits read as a oneline log: the medium log goes before the patch, the blame before the oneline log.
+const DETECTORS: [Detector; 5] = [log::detect, blame::detect, oneline::detect, stash::detect, patch::detect];
 
 /// Recognises what git piped, after its colours are stripped: `None` for what is neither (git branch, --stat, status) or is empty.
 pub fn read(text: &str) -> Option<Document> {
@@ -43,6 +47,7 @@ pub fn read(text: &str) -> Option<Document> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::Revision;
 
     #[test]
     fn read_tells_a_log_from_a_diff_and_strips_colours() {
@@ -60,7 +65,22 @@ mod tests {
         assert_eq!(files[0].path, "src/a.php");
     }
 
+    #[test]
+    fn read_takes_a_blame_before_a_oneline_log() {
+        let blame = "7bfd4f45 (Linus 2024-08-21 23:03:02 +0200 1) <?php\n238d6155 (Grace Hopper 2026-10-16 18:01:20 +0200 2) return;\n";
 
+        assert!(matches!(read(blame), Some(Document::Blame(lines)) if lines.len() == 2));
+    }
+
+    #[test]
+    fn read_reads_oneline_logs_reflogs_and_stash_lists_as_logs() {
+        let Some(Document::Log(oneline)) = read("0123456 First\n89abcde Second\n") else { panic!("a oneline log") };
+        let Some(Document::Log(reflog)) = read("238d6155 HEAD@{0}: commit: Init\n238d6155 HEAD@{1}: checkout: moving\n") else { panic!("a reflog") };
+        let Some(Document::Log(stashes)) = read("stash@{0}: WIP on main: 238d615 Fix\n") else { panic!("a stash list") };
+
+        assert_eq!((oneline.len(), reflog.len()), (2, 2));
+        assert_eq!(stashes[0].revision, Revision::Stash("stash@{0}".into()));
+    }
 
     #[test]
     fn read_leaves_what_is_neither_a_log_nor_a_patch() {
