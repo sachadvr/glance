@@ -4,3 +4,4 @@ pub mod domain;
 pub mod git;
 pub mod input;
 pub mod search;
+pub mod theme;
