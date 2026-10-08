@@ -9,3 +9,4 @@ pub mod search;
 pub mod terminal;
 pub mod theme;
 pub mod ui;
+pub mod runtime;
