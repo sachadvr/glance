@@ -2,6 +2,15 @@
 name = "glance"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
+description = "A git pager and branch browser for the terminal: diffs, logs, stashes and blames you can click through."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/sachadvr/glance"
+homepage = "https://github.com/sachadvr/glance"
+readme = "README.md"
+keywords = ["git", "tui", "pager", "diff", "terminal"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = [".claude/", ".github/", "CLAUDE.md"]
 
 [lib]
 path = "src/lib.rs"
