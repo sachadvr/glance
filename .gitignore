@@ -1,1 +1,4 @@
 /target
+# Machine-specific notes for Claude Code, next to the shared CLAUDE.md.
+CLAUDE.local.md
+.claude/settings.local.json
