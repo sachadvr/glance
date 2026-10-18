@@ -47,7 +47,7 @@ Anything glance does not recognise (`git branch`, `git status`, `--stat`…) is 
 
 glance runs on **macOS and Linux**. You need **git**, and **less** for the output glance does not handle itself.
 
-From source, with Rust 1.85 or later:
+From source, with Rust 1.89 or later:
 
 ```sh
 cargo install --git https://github.com/sachadvr/glance
