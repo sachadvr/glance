@@ -21,15 +21,6 @@ impl Status {
         }
     }
 
-    pub fn label(self) -> &'static str {
-        match self {
-            Status::Modified => "modifié",
-            Status::Added => "ajouté",
-            Status::Deleted => "supprimé",
-            Status::Renamed => "renommé",
-            Status::Untracked => "non suivi",
-        }
-    }
 }
 
 /// Lines added and removed: per file, per commit, per list.

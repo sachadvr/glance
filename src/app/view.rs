@@ -6,7 +6,8 @@ use super::command::Command;
 use super::keymap::Binding;
 use super::session::Session;
 use crate::domain::ChangeStats;
-use crate::git::Base;
+use crate::git::{Base, GitError};
+use crate::i18n::Strings;
 use crate::theme::Theme;
 use crate::ui::Hit;
 
@@ -31,12 +32,18 @@ pub struct Context<'a> {
     pub session: &'a mut Session,
     pub settings: &'a mut Settings,
     pub theme: &'static Theme,
+    pub strings: &'static Strings,
     pub effects: &'a mut Vec<Effect>,
 }
 
 impl Context<'_> {
-    pub fn fail(&mut self, error: impl ToString) {
-        self.effects.push(Effect::Error(error.to_string()));
+    pub fn fail(&mut self, message: impl Into<String>) {
+        self.effects.push(Effect::Error(message.into()));
+    }
+
+    pub fn fail_git(&mut self, error: &GitError) {
+        let message = self.strings.git_error(error);
+        self.fail(message);
     }
 }
 
@@ -45,6 +52,7 @@ pub struct Paint<'a> {
     pub session: &'a Session,
     pub settings: Settings,
     pub theme: &'static Theme,
+    pub strings: &'static Strings,
     /// The confirmed search, which a screen showing text highlights.
     pub search: Option<&'a str>,
 }
@@ -74,7 +82,7 @@ pub struct Tool {
 
 /// A screen: a list or a file, in a tab's stack. A new screen is a new implementation: the app only knows this.
 pub trait View {
-    fn keymap(&self, session: &Session) -> Vec<Binding>;
+    fn keymap(&self, strings: &'static Strings) -> Vec<Binding>;
 
     fn handle(&mut self, command: Command, context: &mut Context) -> Transition;
 
@@ -82,11 +90,11 @@ pub trait View {
     fn render(&mut self, frame: &mut Frame, area: Rect, paint: &Paint) -> Vec<Hit>;
 
     /// A tab's first screen names the tab.
-    fn tab_title(&self, _session: &Session) -> Option<TabTitle> {
+    fn tab_title(&self, _session: &Session, _strings: &'static Strings) -> Option<TabTitle> {
         None
     }
 
-    fn tools(&self, _theme: &Theme) -> Vec<Tool> {
+    fn tools(&self, _theme: &Theme, _strings: &Strings) -> Vec<Tool> {
         Vec::new()
     }
 

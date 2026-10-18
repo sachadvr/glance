@@ -13,6 +13,7 @@ use crate::app::session::Session;
 use crate::app::view::{Context, Paint, TabTitle, Transition, View};
 use crate::domain::{expand_tabs, Blame, BlameLine, ChangeStats, Commit, DiffRow, Revision, RowKind};
 use crate::highlight::{highlight, Segment};
+use crate::i18n::Strings;
 use crate::theme::Theme;
 use crate::ui::{colored_spans, draw_list, every_row, fit_end, grey, padded, Hit};
 
@@ -29,9 +30,9 @@ pub struct BlameView {
 }
 
 impl View for BlameView {
-    fn keymap(&self, _session: &Session) -> Vec<Binding> {
+    fn keymap(&self, strings: &'static Strings) -> Vec<Binding> {
         let mut bindings = keymap::list_motions();
-        bindings.push(keymap::open("commit de la ligne"));
+        bindings.push(keymap::open(strings, strings.open_line_commit));
         bindings
     }
 
@@ -63,7 +64,7 @@ impl View for BlameView {
             .iter()
             .enumerate()
             .map(|(index, line)| {
-                let mut spans = gutter(line, index.checked_sub(1).map(|previous| &lines[previous]), paint.theme);
+                let mut spans = gutter(line, index.checked_sub(1).map(|previous| &lines[previous]), paint);
                 spans.push(grey(format!("{:>5} │ ", line.number), paint.theme));
                 match colors.get(index).and_then(Option::as_ref) {
                     Some(segments) => spans.extend(colored_spans(segments)),
@@ -75,8 +76,8 @@ impl View for BlameView {
         draw_list(frame, area, items, self.cursor.within(lines.len()), &every_row(lines.len()), paint.theme)
     }
 
-    fn tab_title(&self, session: &Session) -> Option<TabTitle> {
-        Some(TabTitle { key: 'b', label: "Lignes", count: session.blame.lines.len(), stats: ChangeStats::default() })
+    fn tab_title(&self, session: &Session, strings: &'static Strings) -> Option<TabTitle> {
+        Some(TabTitle { key: 'b', label: strings.lines_tab, count: session.blame.lines.len(), stats: ChangeStats::default() })
     }
 
     fn search_texts(&self, session: &Session) -> Vec<String> {
@@ -99,7 +100,7 @@ impl View for BlameView {
 // The commit that last wrote the line, opened like any other commit.
 fn open_line(context: &mut Context, line: &BlameLine) -> Transition {
     if !line.is_committed() {
-        context.fail("ligne pas encore commitée");
+        context.fail(context.strings.line_not_committed);
         return Transition::Stay;
     }
     let git = context.session.git();
@@ -107,7 +108,7 @@ fn open_line(context: &mut Context, line: &BlameLine) -> Transition {
     let files = match git.files_of(&revision) {
         Ok(files) => files,
         Err(error) => {
-            context.fail(error);
+            context.fail_git(&error);
             return Transition::Stay;
         }
     };
@@ -124,12 +125,13 @@ fn colors(blame: &Blame, theme: &Theme) -> Vec<Option<Vec<Segment>>> {
 }
 
 // Who wrote the line and when, shown once for a run of lines from one commit.
-fn gutter(line: &BlameLine, previous: Option<&BlameLine>, theme: &Theme) -> Vec<Span<'static>> {
+fn gutter(line: &BlameLine, previous: Option<&BlameLine>, paint: &Paint) -> Vec<Span<'static>> {
+    let theme = paint.theme;
     if previous.is_some_and(|previous| previous.hash == line.hash) {
         return vec![Span::raw(" ".repeat(GUTTER_WIDTH))];
     }
     if !line.is_committed() {
-        return vec![Span::styled(padded(" pas encore commitée".to_string(), GUTTER_WIDTH), Style::new().fg(theme.green))];
+        return vec![Span::styled(padded(fit_end(&format!(" {}", paint.strings.not_committed_yet), GUTTER_WIDTH), GUTTER_WIDTH), Style::new().fg(theme.green))];
     }
 
     vec![

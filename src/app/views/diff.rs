@@ -14,6 +14,7 @@ use crate::app::session::Session;
 use crate::app::view::{Context, Effect, Paint, Transition, View};
 use crate::domain::{diff_rows, DiffRow, FileDiff};
 use crate::highlight::{highlight, Segment};
+use crate::i18n::Strings;
 use crate::theme::Theme;
 use crate::ui::{diff_lines, grey, spans_width, stat_spans, status_color, Hit, Row};
 
@@ -63,21 +64,21 @@ impl DiffView {
 }
 
 impl View for DiffView {
-    fn keymap(&self, _session: &Session) -> Vec<Binding> {
+    fn keymap(&self, strings: &'static Strings) -> Vec<Binding> {
         vec![
-            Binding::new(Command::Move(Motion::Down), &[key(KeyCode::Down), char('j'), key(KeyCode::Enter)]).hint("j", "défiler"),
-            Binding::new(Command::Move(Motion::Up), &[key(KeyCode::Up), char('k')]).hint("k", "défiler"),
-            Binding::new(Command::Move(Motion::PageDown), &[key(KeyCode::PageDown), char(' ')]).hint("espace", "page"),
-            Binding::new(Command::Move(Motion::PageUp), &[key(KeyCode::PageUp), char('b')]).hint("b", "page"),
+            Binding::new(Command::Move(Motion::Down), &[key(KeyCode::Down), char('j'), key(KeyCode::Enter)]).hint("j", strings.scroll),
+            Binding::new(Command::Move(Motion::Up), &[key(KeyCode::Up), char('k')]).hint("k", strings.scroll),
+            Binding::new(Command::Move(Motion::PageDown), &[key(KeyCode::PageDown), char(' ')]).hint(strings.space_key, strings.page),
+            Binding::new(Command::Move(Motion::PageUp), &[key(KeyCode::PageUp), char('b')]).hint("b", strings.page),
             Binding::new(Command::Move(Motion::HalfPageDown), &[ctrl('d')]),
             Binding::new(Command::Move(Motion::HalfPageUp), &[ctrl('u')]),
             Binding::new(Command::Move(Motion::Top), &[char('g'), key(KeyCode::Home)]),
             Binding::new(Command::Move(Motion::Bottom), &[char('G'), key(KeyCode::End)]),
-            Binding::new(Command::NextFile, &[char('n'), char(']')]).hint("n", "fichier"),
-            Binding::new(Command::PreviousFile, &[char('p'), char('[')]).hint("p", "fichier"),
-            Binding::new(Command::ToggleWrap, &[char('w')]).hint("w", "retour ligne"),
-            Binding::new(Command::YankAll, &[char('Y')]).hint("Y", "copier"),
-            keymap::back(),
+            Binding::new(Command::NextFile, &[char('n'), char(']')]).hint("n", strings.file),
+            Binding::new(Command::PreviousFile, &[char('p'), char('[')]).hint("p", strings.file),
+            Binding::new(Command::ToggleWrap, &[char('w')]).hint("w", strings.wrap_lines),
+            Binding::new(Command::YankAll, &[char('Y')]).hint("Y", strings.copy),
+            keymap::back(strings),
         ]
     }
 
@@ -100,7 +101,7 @@ impl View for DiffView {
         let [title, body] = Layout::vertical([Constraint::Length(2), Constraint::Min(1)]).areas(area);
         self.page = usize::from(body.height).max(1);
         let width = usize::from(area.width);
-        let heading = self.heading(width, paint.theme);
+        let heading = self.heading(width, paint);
         let hits = heading.hits(title, 0).collect();
         frame.render_widget(Paragraph::new(vec![Line::from(heading.spans), Line::from(grey("─".repeat(width), paint.theme))]), title);
         let lines: Vec<Line> = self
@@ -146,7 +147,8 @@ impl View for DiffView {
 
 impl DiffView {
     // "← M src/a.php +3 −1        ◀ préc  2/5  suiv ▶", the navigation against the right edge.
-    fn heading(&self, width: usize, theme: &Theme) -> Row {
+    fn heading(&self, width: usize, paint: &Paint) -> Row {
+        let theme = paint.theme;
         let file = self.file();
         let mut heading = Row::default();
         heading.push_target(grey(BACK, theme), Command::Back);
@@ -154,12 +156,12 @@ impl DiffView {
         heading.push(Span::raw(format!(" {}", file.path)).bold());
         stat_spans(file.stats, theme).into_iter().for_each(|span| heading.push(span));
         if let Some(old_path) = &file.old_path {
-            heading.push(grey(format!("   {} depuis {old_path}", file.status.label()), theme));
+            heading.push(grey(format!("   {}", (paint.strings.status_from)(file.status, old_path)), theme));
         }
         let enabled = |is_enabled: bool| Style::new().fg(if is_enabled { theme.accent } else { theme.grey });
-        let previous = Span::styled("◀ préc", enabled(self.index > 0));
+        let previous = Span::styled(paint.strings.previous_file, enabled(self.index > 0));
         let position = grey(format!("  {}/{}  ", self.index + 1, self.files.len()), theme);
-        let next = Span::styled("suiv ▶ ", enabled(self.index + 1 < self.files.len()));
+        let next = Span::styled(format!("{} ", paint.strings.next_file), enabled(self.index + 1 < self.files.len()));
         let navigation_width = spans_width(&[previous.clone(), position.clone(), next.clone()]);
         heading.push(Span::raw(" ".repeat(width.saturating_sub(heading.width() + navigation_width).max(3))));
         heading.push_target(previous, Command::PreviousFile);

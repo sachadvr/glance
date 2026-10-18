@@ -5,6 +5,7 @@ mod support;
 
 use std::rc::Rc;
 
+use glance::i18n::FRENCH;
 use glance::app::command::Command;
 use glance::app::App;
 use glance::domain::{BlameLine, Commit, FileDiff, Revision};
@@ -165,7 +166,7 @@ fn a_reflog_shows_its_selectors_and_a_oneline_log_has_no_byline() {
 
 #[test]
 fn an_empty_diff_says_so_and_ignores_open_search_and_copy() {
-    let mut app = App::for_document(Document::Diff(Vec::new()), None, ThemeSelection::default());
+    let mut app = App::for_document(Document::Diff(Vec::new()), None, ThemeSelection::default(), &FRENCH);
 
     key(&mut app, KeyCode::Enter);
     keys(&mut app, "jGk");
@@ -181,7 +182,7 @@ fn an_empty_diff_says_so_and_ignores_open_search_and_copy() {
 
 #[test]
 fn an_empty_log_says_so_and_ignores_open_and_unfold() {
-    let mut app = App::for_document(Document::Log(Vec::new()), None, ThemeSelection::default());
+    let mut app = App::for_document(Document::Log(Vec::new()), None, ThemeSelection::default(), &FRENCH);
 
     key(&mut app, KeyCode::Enter);
     keys(&mut app, "s");
@@ -195,7 +196,7 @@ fn an_empty_log_says_so_and_ignores_open_and_unfold() {
 
 #[test]
 fn an_empty_blame_draws_and_ignores_open() {
-    let mut app = App::for_document(Document::Blame(Vec::new()), None, ThemeSelection::default());
+    let mut app = App::for_document(Document::Blame(Vec::new()), None, ThemeSelection::default(), &FRENCH);
 
     key(&mut app, KeyCode::Enter);
     let screen = frame(&mut app);
@@ -969,9 +970,9 @@ fn every_screen() -> Vec<(&'static str, App)> {
     let mut error = app(ONELINE);
     key(&mut error, KeyCode::Enter);
     screens.push(("error", error));
-    screens.push(("empty diff", App::for_document(Document::Diff(Vec::new()), None, ThemeSelection::default())));
-    screens.push(("empty log", App::for_document(Document::Log(Vec::new()), None, ThemeSelection::default())));
-    screens.push(("empty blame", App::for_document(Document::Blame(Vec::new()), None, ThemeSelection::default())));
+    screens.push(("empty diff", App::for_document(Document::Diff(Vec::new()), None, ThemeSelection::default(), &FRENCH)));
+    screens.push(("empty log", App::for_document(Document::Log(Vec::new()), None, ThemeSelection::default(), &FRENCH)));
+    screens.push(("empty blame", App::for_document(Document::Blame(Vec::new()), None, ThemeSelection::default(), &FRENCH)));
     screens
 }
 
@@ -1023,13 +1024,13 @@ fn a_hover_far_outside_a_small_frame_is_harmless() {
 fn a_log_whose_files_are_known_but_empty_and_a_blame_without_path_draw() {
     let mut commit = Commit::new(Revision::Hash("abcdef123".into()), "Nothing");
     commit.files = Some(Rc::from(Vec::<FileDiff>::new()));
-    let mut log = App::for_document(Document::Log(vec![commit]), None, ThemeSelection::default());
+    let mut log = App::for_document(Document::Log(vec![commit]), None, ThemeSelection::default(), &FRENCH);
     assert!(frame(&mut log).contains("← abcdef123 Nothing"));
     key(&mut log, KeyCode::Enter);
     assert!(frame(&mut log).contains("← abcdef123 Nothing"), "no file to open");
 
     let line = BlameLine { hash: "7bfd4f45".into(), author: "A very long author name indeed".into(), date: "2024-08-21".into(), number: 99999, code: "\tindented\tcode".into() };
-    let mut blame = App::for_document(Document::Blame(vec![line]), None, ThemeSelection::default());
+    let mut blame = App::for_document(Document::Blame(vec![line]), None, ThemeSelection::default(), &FRENCH);
     let screen = frame(&mut blame);
     assert!(screen.header().contains("git blame"));
     assert!(screen.contains("indented"), "{}", screen.text());

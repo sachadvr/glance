@@ -5,12 +5,21 @@ use std::process::Command;
 use crate::domain::{sort_by_directory, FileDiff, Revision};
 use crate::input::parse_patch;
 
-#[derive(Clone, Debug)]
-pub struct GitError(pub String);
+/// What went wrong running git. The interface words it in its language; git's own messages stay as git wrote them.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum GitError {
+    /// Counting from the main line, when the repository has none.
+    NoMainline,
+    /// git could not run, or said why it failed.
+    Failed(String),
+}
 
 impl fmt::Display for GitError {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str(&self.0)
+        match self {
+            GitError::NoMainline => formatter.write_str("no main branch found"),
+            GitError::Failed(message) => formatter.write_str(message),
+        }
     }
 }
 
@@ -44,9 +53,9 @@ impl Git {
     }
 
     pub(super) fn run(&self, args: &[&str]) -> GitResult<String> {
-        let output = self.command(args).output().map_err(|error| GitError(error.to_string()))?;
+        let output = self.command(args).output().map_err(|error| GitError::Failed(error.to_string()))?;
         if !output.status.success() {
-            return Err(GitError(String::from_utf8_lossy(&output.stderr).trim().to_string()));
+            return Err(GitError::Failed(String::from_utf8_lossy(&output.stderr).trim().to_string()));
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).into_owned())

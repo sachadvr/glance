@@ -47,7 +47,7 @@ impl Repo {
         match base {
             Base::Worktree => Ok("HEAD".to_string()),
             Base::Mainline => {
-                let mainline = self.mainline.as_deref().ok_or_else(|| GitError("aucune branche principale trouvée".to_string()))?;
+                let mainline = self.mainline.as_deref().ok_or(GitError::NoMainline)?;
                 Ok(self.git.run(&["merge-base", mainline, "HEAD"])?.trim().to_string())
             }
             Base::Commit(hash) => Ok(self.git.run(&["rev-parse", "--verify", "--quiet", &format!("{hash}^")]).map_or_else(|_| EMPTY_TREE.to_string(), |parent| parent.trim().to_string())),
@@ -60,7 +60,7 @@ impl Repo {
         let untracked = self.git.run(&["ls-files", "--others", "--exclude-standard", "-z"])?;
         for path in untracked.split('\0').filter(|path| !path.is_empty()).take(MAX_UNTRACKED) {
             // --no-index exits 1 when the files differ, which they always do here.
-            let output = self.git.command(&["diff", "--no-color", "--no-ext-diff", "--no-index", "--", "/dev/null", path]).output().map_err(|error| GitError(error.to_string()))?;
+            let output = self.git.command(&["diff", "--no-color", "--no-ext-diff", "--no-index", "--", "/dev/null", path]).output().map_err(|error| GitError::Failed(error.to_string()))?;
             for mut file in parse_patch(&lines(&String::from_utf8_lossy(&output.stdout))) {
                 file.status = Status::Untracked;
                 file.path = path.to_string();
@@ -191,7 +191,7 @@ mod tests {
         let mut repo = temp.open();
         repo.mainline = None;
 
-        assert_eq!(repo.files(&Base::Mainline).unwrap_err().0, "aucune branche principale trouvée");
+        assert_eq!(repo.files(&Base::Mainline).unwrap_err(), GitError::NoMainline);
     }
 
     #[test]

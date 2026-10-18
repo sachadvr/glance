@@ -2,6 +2,7 @@
 
 use std::rc::Rc;
 
+use glance::i18n::FRENCH;
 use glance::app::keymap::{self, char, key, Binding, Chord};
 use glance::app::session::{Session, Source};
 use glance::app::view::View;
@@ -22,7 +23,7 @@ fn files() -> Rc<[FileDiff]> {
 /// files and commits tabs, plus the blame's own tab key), so a view key colliding with any of them is caught.
 fn root_layer(roots: &[&dyn View], session: &Session) -> Vec<Chord> {
     let mut chords = vec![key(KeyCode::Esc), key(KeyCode::Tab)];
-    chords.extend(roots.iter().filter_map(|view| view.tab_title(session)).map(|title| char(title.key)));
+    chords.extend(roots.iter().filter_map(|view| view.tab_title(session, &FRENCH)).map(|title| char(title.key)));
     chords.extend(['1', '2', '3', 'r', 'F'].map(char));
     chords
 }
@@ -61,13 +62,13 @@ fn no_screen_binds_a_key_twice_across_its_layers() {
     ];
 
     for (name, view) in roots.iter().map(|view| ("root", *view)).chain(pushed.iter().map(|(name, view)| (*name, view.as_ref()))) {
-        let mut layers = chords(&view.keymap(&session));
+        let mut layers = chords(&view.keymap(&FRENCH));
         if name == "root" {
             layers.extend(root_chords.iter().copied());
         }
-        layers.extend(chords(&keymap::global()));
+        layers.extend(chords(&keymap::global(&FRENCH)));
 
-        let label = view.tab_title(&session).map_or(name.to_string(), |title| title.label.to_string());
+        let label = view.tab_title(&session, &FRENCH).map_or(name.to_string(), |title| title.label.to_string());
         assert_eq!(duplicates(&layers), Vec::<Chord>::new(), "{label} binds a key twice");
     }
 }
@@ -87,7 +88,6 @@ fn the_root_layer_mirror_itself_has_no_duplicate() {
 
 #[test]
 fn every_screen_names_at_least_one_key_and_global_keys_are_named() {
-    let session = session();
     let theme = ThemeSelection::default().current();
     let views: Vec<Box<dyn View>> = vec![
         Box::new(FilesView::default()),
@@ -98,7 +98,7 @@ fn every_screen_names_at_least_one_key_and_global_keys_are_named() {
     ];
 
     for view in &views {
-        assert!(!keymap::hints(&view.keymap(&session)).is_empty());
+        assert!(!keymap::hints(&view.keymap(&FRENCH)).is_empty());
     }
-    assert_eq!(keymap::hints(&keymap::global()), "/ chercher · y copier · t thème · q quitter");
+    assert_eq!(keymap::hints(&keymap::global(&FRENCH)), "/ chercher · y copier · t thème · q quitter");
 }

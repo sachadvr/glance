@@ -16,6 +16,7 @@ use ratatui::Frame;
 
 use crate::domain::Blame;
 use crate::git::{Base, Repo};
+use crate::i18n::Strings;
 use crate::input::Document;
 use crate::search::next_match;
 use crate::theme::ThemeSelection;
@@ -52,6 +53,7 @@ pub struct App {
     active: usize,
     settings: Settings,
     theme: ThemeSelection,
+    strings: &'static Strings,
     search: Search,
     status: Option<Status>,
     hits: Vec<Hit>,
@@ -62,13 +64,14 @@ pub struct App {
 }
 
 impl App {
-    fn new(session: Session, tabs: Vec<Box<dyn View>>, theme: ThemeSelection) -> App {
+    fn new(session: Session, tabs: Vec<Box<dyn View>>, theme: ThemeSelection, strings: &'static Strings) -> App {
         App {
             session,
             tabs: tabs.into_iter().map(|root| vec![root]).collect(),
             active: 0,
             settings: Settings::default(),
             theme,
+            strings,
             search: Search::default(),
             status: None,
             hits: Vec::new(),
@@ -80,15 +83,15 @@ impl App {
     }
 
     /// Browsing the repository glance was started in: its uncommitted work and its branch's commits.
-    pub fn for_repo(repo: Repo, theme: ThemeSelection) -> App {
-        let mut app = App::new(Session::new(Source::Repo(repo)), vec![Box::new(FilesView::default()), Box::new(CommitsView::default())], theme);
+    pub fn for_repo(repo: Repo, theme: ThemeSelection, strings: &'static Strings) -> App {
+        let mut app = App::new(Session::new(Source::Repo(repo)), vec![Box::new(FilesView::default()), Box::new(CommitsView::default())], theme, strings);
         app.reload();
         app.execute(Command::Fetch);
         app
     }
 
     /// Paging what git piped. `blamed_path` names the file of a blame, which the blame itself does not.
-    pub fn for_document(document: Document, blamed_path: Option<String>, theme: ThemeSelection) -> App {
+    pub fn for_document(document: Document, blamed_path: Option<String>, theme: ThemeSelection, strings: &'static Strings) -> App {
         let (command, root): (String, Box<dyn View>) = match &document {
             Document::Diff(_) => ("git diff".to_string(), Box::new(FilesView::default())),
             Document::Log(commits) if commits.first().is_some_and(|commit| commit.is_stash()) => ("git stash".to_string(), Box::new(CommitsView::default())),
@@ -101,7 +104,7 @@ impl App {
             Document::Log(commits) => session.commits = commits,
             Document::Blame(lines) => session.blame = Blame { path: blamed_path, lines },
         }
-        let mut app = App::new(session, vec![root], theme);
+        let mut app = App::new(session, vec![root], theme, strings);
         // `git show` sends one commit: its files are what there is to look at.
         if app.session.commits.len() == 1 {
             app.execute(Command::Open);
@@ -141,7 +144,7 @@ impl App {
 
     fn reload(&mut self) {
         if let Err(error) = self.session.reload() {
-            self.status = Some(Status::Error(error.to_string()));
+            self.status = Some(Status::Error(self.strings.git_error(&error)));
         }
     }
 
@@ -174,7 +177,7 @@ impl App {
         let theme = self.theme.current();
         let top = self.tabs[self.active].last_mut().expect("a tab keeps its first screen");
         let mut effects = Vec::new();
-        top.prepare(&mut Context { session: &mut self.session, settings: &mut self.settings, theme, effects: &mut effects });
+        top.prepare(&mut Context { session: &mut self.session, settings: &mut self.settings, theme, strings: self.strings, effects: &mut effects });
         self.apply(effects);
         self.hits = chrome::draw(frame, self);
     }
@@ -182,24 +185,24 @@ impl App {
     /// The keys the root of a tab adds: switching tabs, and what the repository can do.
     fn root_bindings(&self) -> Vec<Binding> {
         let mut bindings = vec![Binding::new(Command::Quit, &[key(KeyCode::Esc)])];
-        let titles = self.tabs.iter().enumerate().filter_map(|(index, stack)| stack[0].tab_title(&self.session).map(|title| (index, title)));
+        let titles = self.tabs.iter().enumerate().filter_map(|(index, stack)| stack[0].tab_title(&self.session, self.strings).map(|title| (index, title)));
         for (index, title) in titles {
             let binding = Binding::new(Command::SwitchTab(index), &[char(title.key)]);
-            bindings.push(if self.tabs.len() > 1 { binding.hint(title.key.to_string(), "onglet") } else { binding });
+            bindings.push(if self.tabs.len() > 1 { binding.hint(title.key.to_string(), self.strings.tab) } else { binding });
         }
         bindings.push(Binding::new(Command::NextTab, &[key(KeyCode::Tab)]));
         let Some(repo) = self.session.repo() else {
             return bindings;
         };
         // The base keys work from every tab, but are named only where the base row shows.
-        let named = |binding: Binding, keys: &'static str| if self.top().shows_base() { binding.hint(keys, "base") } else { binding };
+        let named = |binding: Binding, keys: &'static str| if self.top().shows_base() { binding.hint(keys, self.strings.base) } else { binding };
         bindings.push(named(Binding::new(Command::SetBase(Base::Worktree), &[char('1')]), "1"));
         if repo.mainline.is_some() {
             bindings.push(named(Binding::new(Command::SetBase(Base::Mainline), &[char('2')]), "2"));
         }
         bindings.push(named(Binding::new(Command::PickBase, &[char('3')]), "3"));
-        bindings.push(Binding::new(Command::Reload, &[char('r')]).hint("r", "rafraîchir"));
-        bindings.push(Binding::new(Command::Fetch, &[char('F')]).hint("F", "fetch"));
+        bindings.push(Binding::new(Command::Reload, &[char('r')]).hint("r", self.strings.reload));
+        bindings.push(Binding::new(Command::Fetch, &[char('F')]).hint("F", self.strings.fetch));
         bindings
     }
 
@@ -209,11 +212,11 @@ impl App {
         if self.search.query.is_some() {
             layers.push(keymap::search());
         }
-        layers.push(self.top().keymap(&self.session));
+        layers.push(self.top().keymap(self.strings));
         if self.is_at_root() {
             layers.push(self.root_bindings());
         }
-        layers.push(keymap::global());
+        layers.push(keymap::global(self.strings));
         layers
     }
 
@@ -310,7 +313,7 @@ impl App {
         let theme = self.theme.current();
         let mut effects = Vec::new();
         let top = self.tabs[self.active].last_mut().expect("a tab keeps its first screen");
-        let transition = top.handle(command, &mut Context { session: &mut self.session, settings: &mut self.settings, theme, effects: &mut effects });
+        let transition = top.handle(command, &mut Context { session: &mut self.session, settings: &mut self.settings, theme, strings: self.strings, effects: &mut effects });
         match transition {
             Transition::Stay => {}
             Transition::Push(view) => self.push_screen(view),
@@ -366,7 +369,7 @@ impl App {
 
     fn set_base(&mut self, base: Base) {
         if let Err(error) = self.session.set_base(base) {
-            self.status = Some(Status::Error(error.to_string()));
+            self.status = Some(Status::Error(self.strings.git_error(&error)));
         }
         if let Some(tab) = self.base_tab() {
             self.tabs[tab][0].select(0);
@@ -375,7 +378,7 @@ impl App {
 
     fn pick_base(&mut self) {
         if self.session.commits.is_empty() {
-            self.status = Some(Status::Error("aucun commit sur la branche".to_string()));
+            self.status = Some(Status::Error(self.strings.no_commit_on_branch.to_string()));
             return;
         }
         let Some(tab) = self.base_tab() else {
@@ -407,7 +410,7 @@ impl App {
         let from = if includes_current { position.checked_sub(1).unwrap_or(texts.len().saturating_sub(1)) } else { position };
         match next_match(&texts, &query, from, forward) {
             Some(index) => self.top_mut().select(index),
-            None => self.status = Some(Status::Error("aucun résultat".to_string())),
+            None => self.status = Some(Status::Error(self.strings.no_result.to_string())),
         }
     }
 
@@ -418,17 +421,17 @@ impl App {
     }
 
     fn copy(&mut self, text: String) {
-        self.status = Some(Status::Notice(notice_for(&text)));
+        self.status = Some(Status::Notice((self.strings.copied)(&shown_start(&text))));
         self.clipboard = Some(text);
     }
 }
 
 // The notice shows the start of what was copied, on one line.
-fn notice_for(text: &str) -> String {
+fn shown_start(text: &str) -> String {
     let flat = text.replace('\n', " ");
     let mut shown: String = flat.chars().take(NOTICE_TEXT_CHARS).collect();
     if flat.chars().count() > NOTICE_TEXT_CHARS {
         shown.push('…');
     }
-    format!("copié : {shown}")
+    shown
 }

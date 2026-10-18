@@ -31,7 +31,7 @@ pub(super) fn draw(frame: &mut Frame, app: &mut App) -> Vec<Hit> {
     frame.render_widget(Paragraph::new(vec![Line::from(tab_row.spans), Line::from(base_row.spans)]), tabs);
     frame.render_widget(Paragraph::new(footer_line(app, theme)), footer);
 
-    let paint = Paint { session: &app.session, settings: app.settings, theme, search: app.search.query.as_deref() };
+    let paint = Paint { session: &app.session, settings: app.settings, theme, strings: app.strings, search: app.search.query.as_deref() };
     let top = app.tabs[app.active].last_mut().expect("a tab keeps its first screen");
     hits.extend(top.render(frame, body, &paint));
     paint_hover(frame, app, &hits, theme);
@@ -60,9 +60,9 @@ fn header_row(app: &App, width: usize, theme: &Theme) -> Row {
             row.push(Span::styled(format!("⎇ {}", repo.branch), Style::new().fg(theme.blue)));
             row.push(match app.session.fetch {
                 FetchState::Idle => Span::raw(""),
-                FetchState::Running => grey("   ⟳ fetch origin…", theme),
-                FetchState::Done => Span::styled("   ✔ origin à jour", Style::new().fg(theme.green)),
-                FetchState::Failed => Span::styled("   ✘ fetch échoué", Style::new().fg(theme.red)),
+                FetchState::Running => grey(format!("   {}", app.strings.fetch_running), theme),
+                FetchState::Done => Span::styled(format!("   {}", app.strings.fetch_done), Style::new().fg(theme.green)),
+                FetchState::Failed => Span::styled(format!("   {}", app.strings.fetch_failed), Style::new().fg(theme.red)),
             });
         }
     }
@@ -76,7 +76,7 @@ fn tab_row(app: &App, theme: &Theme) -> Row {
     let mut row = Row::default();
     row.push(Span::raw(" "));
     for (index, stack) in app.tabs.iter().enumerate() {
-        let Some(title) = stack[0].tab_title(&app.session) else {
+        let Some(title) = stack[0].tab_title(&app.session, app.strings) else {
             continue;
         };
         let style = if index == app.active { Style::new().fg(theme.accent).bold().underlined() } else { Style::new().fg(theme.grey) };
@@ -91,7 +91,7 @@ fn tab_row(app: &App, theme: &Theme) -> Row {
         row.push(Span::raw("    "));
     }
     if app.is_at_root() {
-        for tool in app.top().tools(theme) {
+        for tool in app.top().tools(theme, app.strings) {
             row.push_target(tool.span, tool.command);
         }
     }
@@ -109,16 +109,16 @@ fn base_row(app: &App, theme: &Theme) -> Row {
     let base = &app.session.base;
     let is_picking = !app.is_at_root();
     let other = match base {
-        Base::Commit(hash) => format!("depuis {hash}"),
-        _ => "autre ▾".to_string(),
+        Base::Commit(hash) => (app.strings.since_commit)(hash),
+        _ => app.strings.other_base.to_string(),
     };
     // While a commit is being picked, or without a main line, an option shows but does not click.
     let options = [
-        ('1', "en cours".to_string(), *base == Base::Worktree && !is_picking, (!is_picking).then_some(Command::SetBase(Base::Worktree))),
+        ('1', app.strings.worktree.to_string(), *base == Base::Worktree && !is_picking, (!is_picking).then_some(Command::SetBase(Base::Worktree))),
         ('2', repo.mainline.clone().unwrap_or_else(|| "—".to_string()), *base == Base::Mainline && !is_picking, (!is_picking && repo.mainline.is_some()).then_some(Command::SetBase(Base::Mainline))),
         ('3', other, matches!(base, Base::Commit(_)) || is_picking, (!is_picking).then_some(Command::PickBase)),
     ];
-    row.push(grey(" Depuis  ", theme));
+    row.push(grey(format!(" {}  ", app.strings.since), theme));
     for (key, label, is_active, command) in options {
         let style = if is_active { Style::new().bg(theme.accent).fg(theme.on_accent).bold() } else { Style::new().fg(theme.grey) };
         let span = Span::styled(format!(" {key} {label} "), style);
@@ -141,7 +141,7 @@ fn footer_line(app: &App, theme: &Theme) -> Line<'static> {
         None => {}
     }
     if let Some(query) = &app.search.query {
-        return Line::from(Span::styled(format!(" /{query} · n/N · esc effacer"), Style::new().fg(theme.accent)));
+        return Line::from(Span::styled(format!(" {}", (app.strings.search_status)(query)), Style::new().fg(theme.accent)));
     }
     let layers = app.layers();
     Line::from(grey(format!(" {}", keymap::hints(layers.iter().flatten())), theme))

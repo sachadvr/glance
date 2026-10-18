@@ -13,6 +13,7 @@ use crate::app::session::Session;
 use crate::app::view::{Context, Effect, Paint, Transition, View};
 use crate::domain::Revision;
 use crate::git::Base;
+use crate::i18n::Strings;
 use crate::ui::{draw_list, every_row, fit_end, grey, Hit};
 
 /// Choosing the commit the files tab counts from.
@@ -22,10 +23,10 @@ pub struct BasePickerView {
 }
 
 impl View for BasePickerView {
-    fn keymap(&self, _session: &Session) -> Vec<Binding> {
+    fn keymap(&self, strings: &'static Strings) -> Vec<Binding> {
         let mut bindings = keymap::list_motions();
-        bindings.push(Binding::new(Command::Open, &[key(KeyCode::Enter)]).hint("clic/⏎", "choisir"));
-        bindings.push(Binding::new(Command::Back, &[key(KeyCode::Esc), key(KeyCode::Left), key(KeyCode::Backspace)]).hint("esc", "annuler"));
+        bindings.push(Binding::new(Command::Open, &[key(KeyCode::Enter)]).hint(strings.click_or_enter, strings.choose));
+        bindings.push(Binding::new(Command::Back, &[key(KeyCode::Esc), key(KeyCode::Left), key(KeyCode::Backspace)]).hint("esc", strings.cancel));
         bindings
     }
 
@@ -49,7 +50,7 @@ impl View for BasePickerView {
         let theme = paint.theme;
         let [title, list] = Layout::vertical([Constraint::Length(1), Constraint::Min(1)]).areas(area);
         self.cursor.drawn(list);
-        frame.render_widget(Paragraph::new(Line::from(vec![grey(BACK, theme), grey("Compter les fichiers à partir du commit :", theme)])), title);
+        frame.render_widget(Paragraph::new(Line::from(vec![grey(BACK, theme), grey(paint.strings.pick_base_title, theme)])), title);
         let width = usize::from(area.width).saturating_sub(1);
         let commits = &paint.session.commits;
         let items = commits

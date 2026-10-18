@@ -2,6 +2,7 @@
 //! and the rendered screen read back as text.
 #![allow(dead_code)]
 
+use glance::i18n::FRENCH;
 use glance::app::App;
 use glance::input::{self, Document};
 use glance::theme::ThemeSelection;
@@ -146,11 +147,11 @@ pub fn document(text: &str) -> Document {
 }
 
 pub fn app(text: &str) -> App {
-    App::for_document(document(text), None, ThemeSelection::default())
+    App::for_document(document(text), None, ThemeSelection::default(), &FRENCH)
 }
 
 pub fn blame_app() -> App {
-    App::for_document(document(BLAME), Some("src/feed.php".to_string()), ThemeSelection::default())
+    App::for_document(document(BLAME), Some("src/feed.php".to_string()), ThemeSelection::default(), &FRENCH)
 }
 
 // ---------------------------------------------------------------- input

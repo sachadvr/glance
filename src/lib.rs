@@ -4,6 +4,7 @@ pub mod app;
 pub mod domain;
 pub mod git;
 pub mod highlight;
+pub mod i18n;
 pub mod input;
 pub mod search;
 pub mod terminal;

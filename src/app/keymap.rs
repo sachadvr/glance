@@ -3,6 +3,7 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::command::{Command, Motion};
+use crate::i18n::Strings;
 
 /// A key as bindings name it. Shift is part of the character ('G'), Control is not.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -86,21 +87,22 @@ pub fn list_motions() -> Vec<Binding> {
     ]
 }
 
-pub fn open(label: &'static str) -> Binding {
-    Binding::new(Command::Open, &[key(KeyCode::Enter), key(KeyCode::Right), char('l')]).hint("clic/⏎", label)
+/// Opening the item under the cursor, `label` naming what it opens.
+pub fn open(strings: &Strings, label: &'static str) -> Binding {
+    Binding::new(Command::Open, &[key(KeyCode::Enter), key(KeyCode::Right), char('l')]).hint(strings.click_or_enter, label)
 }
 
-pub fn back() -> Binding {
-    Binding::new(Command::Back, &[key(KeyCode::Esc), key(KeyCode::Left), char('h'), key(KeyCode::Backspace)]).hint("←", "retour")
+pub fn back(strings: &'static Strings) -> Binding {
+    Binding::new(Command::Back, &[key(KeyCode::Esc), key(KeyCode::Left), char('h'), key(KeyCode::Backspace)]).hint("←", strings.back)
 }
 
 /// What works everywhere, after the screen's own keys.
-pub fn global() -> Vec<Binding> {
+pub fn global(strings: &'static Strings) -> Vec<Binding> {
     vec![
-        Binding::new(Command::StartSearch, &[char('/')]).hint("/", "chercher"),
-        Binding::new(Command::Yank, &[char('y')]).hint("y", "copier"),
-        Binding::new(Command::CycleTheme, &[char('t')]).hint("t", "thème"),
-        Binding::new(Command::Quit, &[char('q')]).hint("q", "quitter"),
+        Binding::new(Command::StartSearch, &[char('/')]).hint("/", strings.search),
+        Binding::new(Command::Yank, &[char('y')]).hint("y", strings.copy),
+        Binding::new(Command::CycleTheme, &[char('t')]).hint("t", strings.theme),
+        Binding::new(Command::Quit, &[char('q')]).hint("q", strings.quit),
     ]
 }
 

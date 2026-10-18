@@ -7,6 +7,7 @@ use unicode_width::UnicodeWidthStr;
 
 use super::{grey, Hit};
 use crate::app::command::Command;
+use crate::i18n::Strings;
 use crate::theme::Theme;
 
 fn selection_list(items: Vec<ListItem<'static>>, theme: &Theme) -> List<'static> {
@@ -43,8 +44,8 @@ pub fn every_row(count: usize) -> Vec<Option<usize>> {
 }
 
 /// The heading that opens the tests' section of a file list, after a blank line.
-pub fn tests_separator(count: usize, width: usize, theme: &Theme) -> ListItem<'static> {
-    let label = format!(" Tests · {count} fichier{} ", if count > 1 { "s" } else { "" });
+pub fn tests_separator(count: usize, width: usize, theme: &Theme, strings: &Strings) -> ListItem<'static> {
+    let label = format!(" {} ", (strings.tests_section)(count));
     let rule = "─".repeat(width.saturating_sub(label.width() + 2));
 
     ListItem::new(vec![Line::default(), Line::from(vec![grey("──", theme), Span::styled(label, Style::new().fg(theme.accent).bold()), grey(rule, theme)])])
@@ -73,7 +74,7 @@ mod tests {
     #[test]
     fn tests_separator_says_file_in_the_singular_for_one_test() {
         let theme = ThemeSelection::default().current();
-        let separator = tests_separator(1, 30, theme);
+        let separator = tests_separator(1, 30, theme, &crate::i18n::FRENCH);
 
         assert_eq!(separator.height(), 2);
         assert_eq!(every_row(2), [Some(0), Some(1)]);

@@ -4,6 +4,7 @@ use std::process::{Command, ExitCode, Stdio};
 
 use glance::app::App;
 use glance::git::Repo;
+use glance::i18n::{self, Strings};
 use glance::input;
 use glance::runtime;
 use glance::theme::ThemeSelection;
@@ -23,7 +24,7 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), Box<dyn Error>> {
     if io::stdin().is_terminal() {
-        return runtime::run(App::for_repo(Repo::discover()?, ThemeSelection::restore()));
+        return runtime::run(App::for_repo(Repo::discover()?, ThemeSelection::restore(), language()));
     }
     let mut piped = Vec::new();
     io::stdin().take(MAX_INPUT_BYTES).read_to_end(&mut piped)?;
@@ -33,9 +34,13 @@ fn run() -> Result<(), Box<dyn Error>> {
     }
 
     match input::read(&String::from_utf8_lossy(&piped)) {
-        Some(document) => runtime::run(App::for_document(document, blamed_path(), ThemeSelection::restore())),
+        Some(document) => runtime::run(App::for_document(document, blamed_path(), ThemeSelection::restore(), language())),
         None => page_plainly(&piped),
     }
+}
+
+fn language() -> &'static Strings {
+    i18n::detect(|name| std::env::var(name).ok())
 }
 
 // A blame does not name its file, but git, which runs glance as its pager, was given it last on its command line

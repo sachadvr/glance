@@ -12,6 +12,7 @@ use crate::app::keymap::{self, Binding};
 use crate::app::session::Session;
 use crate::app::view::{Context, Paint, Transition, View};
 use crate::domain::{Commit, FileDiff};
+use crate::i18n::Strings;
 use crate::ui::{draw_list, grey, stat_line, tests_separator, Hit, StatColumns};
 
 /// The files of one commit, as `git show --stat` lists them.
@@ -33,10 +34,10 @@ impl CommitFilesView {
 }
 
 impl View for CommitFilesView {
-    fn keymap(&self, _session: &Session) -> Vec<Binding> {
+    fn keymap(&self, strings: &'static Strings) -> Vec<Binding> {
         let mut bindings = keymap::list_motions();
-        bindings.push(keymap::open("diff"));
-        bindings.push(keymap::back());
+        bindings.push(keymap::open(strings, strings.open_diff));
+        bindings.push(keymap::back(strings));
         bindings
     }
 
@@ -75,7 +76,7 @@ impl View for CommitFilesView {
         let mut selected_row = 0;
         for (index, file) in files.iter().enumerate() {
             if file.is_test() && (index == 0 || !files[index - 1].is_test()) {
-                items.push(tests_separator(test_count, width, theme));
+                items.push(tests_separator(test_count, width, theme, paint.strings));
                 targets.push(None);
             }
             if index == self.cursor.index {

@@ -10,6 +10,7 @@ use crate::app::keymap::{self, char, Binding};
 use crate::app::session::Session;
 use crate::app::view::{Context, Paint, TabTitle, Tool, Transition, View};
 use crate::domain::Commit;
+use crate::i18n::Strings;
 use crate::theme::Theme;
 use crate::ui::{draw_list, every_row, fit_end, grey, stat_line, stat_spans, Hit, StatColumns};
 
@@ -25,10 +26,10 @@ pub struct CommitsView {
 }
 
 impl View for CommitsView {
-    fn keymap(&self, _session: &Session) -> Vec<Binding> {
+    fn keymap(&self, strings: &'static Strings) -> Vec<Binding> {
         let mut bindings = keymap::list_motions();
-        bindings.push(keymap::open("fichiers du commit"));
-        bindings.push(Binding::new(Command::ToggleCommitFiles, &[char('s')]).hint("s", "déplier"));
+        bindings.push(keymap::open(strings, strings.open_commit_files));
+        bindings.push(Binding::new(Command::ToggleCommitFiles, &[char('s')]).hint("s", strings.unfold));
         bindings
     }
 
@@ -52,7 +53,7 @@ impl View for CommitsView {
         let last = (self.cursor.index + self.cursor.page).min(context.session.commits.len());
         for index in first..last {
             if let Err(error) = context.session.commit_files(index) {
-                context.fail(error);
+                context.fail_git(&error);
                 self.shows_files = false;
                 return;
             }
@@ -63,22 +64,22 @@ impl View for CommitsView {
         self.cursor.drawn(area);
         let commits = &paint.session.commits;
         if commits.is_empty() {
-            frame.render_widget(Paragraph::new(grey(" Aucun commit sur la branche.", paint.theme)), area);
+            frame.render_widget(Paragraph::new(grey(format!(" {}", paint.strings.no_commits), paint.theme)), area);
             return Vec::new();
         }
         let width = usize::from(area.width).saturating_sub(1);
-        let items = commits.iter().map(|commit| commit_item(commit, width, self.shows_files, paint.theme)).collect();
+        let items = commits.iter().map(|commit| commit_item(commit, width, self.shows_files, paint)).collect();
         draw_list(frame, area, items, self.cursor.within(commits.len()), &every_row(commits.len()), paint.theme)
     }
 
-    fn tab_title(&self, session: &Session) -> Option<TabTitle> {
-        let label = if session.commits.first().is_some_and(Commit::is_stash) { "Stash" } else { "Commits" };
+    fn tab_title(&self, session: &Session, strings: &'static Strings) -> Option<TabTitle> {
+        let label = if session.commits.first().is_some_and(Commit::is_stash) { strings.stash_tab } else { strings.commits_tab };
         Some(TabTitle { key: 'c', label, count: session.commits.len(), stats: session.commits.iter().map(Commit::stats).sum() })
     }
 
-    fn tools(&self, theme: &Theme) -> Vec<Tool> {
+    fn tools(&self, theme: &Theme, strings: &Strings) -> Vec<Tool> {
         let (marker, color) = if self.shows_files { ("▾", theme.accent) } else { ("▸", theme.grey) };
-        vec![Tool { span: Span::styled(format!("[s] fichiers {marker}"), Style::new().fg(color)), command: Command::ToggleCommitFiles }]
+        vec![Tool { span: Span::styled(format!("[s] {} {marker}", strings.commit_files_tool), Style::new().fg(color)), command: Command::ToggleCommitFiles }]
     }
 
     fn search_texts(&self, session: &Session) -> Vec<String> {
@@ -102,7 +103,7 @@ fn open_commit(context: &mut Context, index: usize) -> Transition {
     match context.session.commit_files(index) {
         Ok(_) => Transition::Push(Box::new(CommitFilesView::new(context.session.commits[index].clone()))),
         Err(error) => {
-            context.fail(error);
+            context.fail_git(&error);
             Transition::Stay
         }
     }
@@ -113,11 +114,12 @@ pub(super) fn commit_search_text(commit: &Commit) -> String {
     format!("{}\n{}\n{}", commit.revision.as_str(), commit.subject, commit.author)
 }
 
-fn commit_item(commit: &Commit, width: usize, shows_files: bool, theme: &Theme) -> ListItem<'static> {
+fn commit_item(commit: &Commit, width: usize, shows_files: bool, paint: &Paint) -> ListItem<'static> {
+    let theme = paint.theme;
     let mut facts: Vec<String> = commit.byline().into_iter().map(String::from).collect();
     // Files not loaded yet are unknown, not zero.
     if let Some(files) = &commit.files {
-        facts.push(format!("{} fichier{}", files.len(), if files.len() > 1 { "s" } else { "" }));
+        facts.push((paint.strings.file_count)(files.len()));
     }
     let mut details = vec![grey(format!("   {}", facts.join(" · ")), theme)];
     details.extend(stat_spans(commit.stats(), theme));
@@ -131,14 +133,15 @@ fn commit_item(commit: &Commit, width: usize, shows_files: bool, theme: &Theme) 
         Line::from(details),
     ];
     if shows_files {
-        lines.extend(commit_file_lines(commit, width, theme));
+        lines.extend(commit_file_lines(commit, width, paint));
     }
     lines.push(Line::default());
     ListItem::new(lines)
 }
 
 // Under an unfolded commit: its files as stat rows, the longest commits cut short.
-fn commit_file_lines(commit: &Commit, width: usize, theme: &Theme) -> Vec<Line<'static>> {
+fn commit_file_lines(commit: &Commit, width: usize, paint: &Paint) -> Vec<Line<'static>> {
+    let theme = paint.theme;
     let files = commit.files.as_deref().unwrap_or_default();
     let columns = StatColumns::fit(files, width, COMMIT_FILES_INDENT.len());
     let mut lines: Vec<Line> = files
@@ -152,7 +155,7 @@ fn commit_file_lines(commit: &Commit, width: usize, theme: &Theme) -> Vec<Line<'
         .collect();
     let hidden = files.len().saturating_sub(MAX_COMMIT_FILES_SHOWN);
     if hidden > 0 {
-        lines.push(Line::from(grey(format!("{COMMIT_FILES_INDENT}  … {hidden} autre{}", if hidden > 1 { "s" } else { "" }), theme)));
+        lines.push(Line::from(grey(format!("{COMMIT_FILES_INDENT}  {}", (paint.strings.more_files)(hidden)), theme)));
     }
     lines
 }

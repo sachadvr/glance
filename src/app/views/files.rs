@@ -12,6 +12,7 @@ use crate::app::keymap::{self, Binding};
 use crate::app::session::Session;
 use crate::app::view::{Context, Paint, TabTitle, Transition, View};
 use crate::domain::{total_stats, FileDiff};
+use crate::i18n::Strings;
 use crate::theme::Theme;
 use crate::ui::{draw_list, fit_end, grey, padded, spans_width, stat_spans, status_color, tests_separator, Hit};
 
@@ -22,9 +23,9 @@ pub struct FilesView {
 }
 
 impl View for FilesView {
-    fn keymap(&self, _session: &Session) -> Vec<Binding> {
+    fn keymap(&self, strings: &'static Strings) -> Vec<Binding> {
         let mut bindings = keymap::list_motions();
-        bindings.push(keymap::open("diff"));
+        bindings.push(keymap::open(strings, strings.open_diff));
         bindings
     }
 
@@ -44,14 +45,14 @@ impl View for FilesView {
         self.cursor.drawn(area);
         let files = &paint.session.files;
         if files.is_empty() {
-            frame.render_widget(Paragraph::new(grey(" Aucune modification.", paint.theme)), area);
+            frame.render_widget(Paragraph::new(grey(format!(" {}", paint.strings.no_changes), paint.theme)), area);
             return Vec::new();
         }
-        draw_files(frame, area, files, self.cursor.within(files.len()), paint.theme)
+        draw_files(frame, area, files, self.cursor.within(files.len()), paint)
     }
 
-    fn tab_title(&self, session: &Session) -> Option<TabTitle> {
-        Some(TabTitle { key: 'f', label: "Fichiers", count: session.files.len(), stats: total_stats(&session.files) })
+    fn tab_title(&self, session: &Session, strings: &'static Strings) -> Option<TabTitle> {
+        Some(TabTitle { key: 'f', label: strings.files_tab, count: session.files.len(), stats: total_stats(&session.files) })
     }
 
     fn shows_base(&self) -> bool {
@@ -75,7 +76,8 @@ impl View for FilesView {
     }
 }
 
-fn draw_files(frame: &mut Frame, area: Rect, files: &[FileDiff], cursor: usize, theme: &Theme) -> Vec<Hit> {
+fn draw_files(frame: &mut Frame, area: Rect, files: &[FileDiff], cursor: usize, paint: &Paint) -> Vec<Hit> {
+    let theme = paint.theme;
     let width = usize::from(area.width).saturating_sub(1);
     let test_count = files.iter().filter(|file| file.is_test()).count();
     let mut items = Vec::new();
@@ -85,7 +87,7 @@ fn draw_files(frame: &mut Frame, area: Rect, files: &[FileDiff], cursor: usize, 
     for (index, file) in files.iter().enumerate() {
         // Files come sorted with the tests last: the first test opens their section, under its own directories.
         if file.is_test() && (index == 0 || !files[index - 1].is_test()) {
-            items.push(tests_separator(test_count, width, theme));
+            items.push(tests_separator(test_count, width, theme, paint.strings));
             targets.push(None);
             directory = None;
         }
