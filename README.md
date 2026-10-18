@@ -1,4 +1,4 @@
-# glance
+# <img src="docs/icon.svg" alt="" width="40" align="top"> glance
 
 **A git pager and branch browser for the terminal.**
 Diffs, logs, stashes and blames become lists you can scroll, search and click through — instead of a wall of text in `less`.
