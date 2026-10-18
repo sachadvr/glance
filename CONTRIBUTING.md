@@ -2,6 +2,8 @@
 
 Thanks for helping! Bug reports, ideas and pull requests are all welcome.
 
+The author knows the basics of Rust, and much of the code was written with AI assistance. Pull requests that make it more idiomatic, simpler or faster, and reviews that explain why, are especially valuable.
+
 ## Reporting a bug
 
 Open an issue with:
@@ -26,6 +28,16 @@ git -c core.pager="$PWD/target/debug/glance" log -p
 ```
 
 Or run `cargo run` inside any repository to open the branch browser.
+
+## Updating the screenshots
+
+The README screenshots come from a real terminal. After a visual change, regenerate them (this needs [VHS](https://github.com/charmbracelet/vhs)):
+
+```sh
+scripts/screenshots.sh
+```
+
+The script builds glance and a demo repository with made-up names and fixed dates in a temporary directory, then runs [`scripts/screenshots/screens.tape`](scripts/screenshots/screens.tape).
 
 ## Making a change
 

@@ -10,7 +10,7 @@ homepage = "https://github.com/sachadvr/glance"
 readme = "README.md"
 keywords = ["git", "tui", "pager", "diff", "terminal"]
 categories = ["command-line-utilities", "development-tools"]
-exclude = [".claude/", ".github/", "CLAUDE.md"]
+exclude = [".claude/", ".github/", "CLAUDE.md", "docs/", "scripts/"]
 
 [lib]
 path = "src/lib.rs"

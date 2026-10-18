@@ -6,20 +6,27 @@ Diffs, logs, stashes and blames become lists you can scroll, search and click th
 [![CI](https://github.com/sachadvr/glance/actions/workflows/ci.yml/badge.svg)](https://github.com/sachadvr/glance/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
-```
- glance   my-project  ⎇ feature/search   ✔ origin à jour                 [t] Tokyo Night
- [f] Fichiers 4 +38 −6    [c] Commits 3 +120 −14
- Depuis   1 en cours    2 origin/main    3 autre ▾
- src/
-›  M parser.rs                                                           +12 −4
-   A search.rs                                                               +26
- ── Tests · 1 fichier ───────────────────────────────────────────────────────────
- tests/
-   M parser_test.rs                                                       +3 −2
- clic/⏎ diff · f/c onglet · 1/2/3 base · r rafraîchir · F fetch · / chercher · …
-```
+![The branch browser: changed files grouped by directory, tests last, counted from origin/main](docs/screenshots/files.png)
 
 > The interface is currently in **French**. An English translation is welcome — see [Contributing](#contributing).
+
+## A note from the author
+
+I am still learning Rust: I know the basics, and **most of this code was written with the help of AI**. I designed it, reviewed it, tested it, and use it every day. But an experienced Rustacean will surely find things to improve: idioms, performance, error handling, structure.
+
+**Contributions are very welcome**, from typo fixes to deep refactors, and so is feedback on what could be done better. See [Contributing](#contributing).
+
+## Screenshots
+
+| Diff with syntax colours and changed words emphasised | Commits unfolded into their files |
+|---|---|
+| ![A diff](docs/screenshots/diff.png) | ![The commit list](docs/screenshots/commits.png) |
+
+**As git's pager**, a `git blame` you can follow to the commit that wrote each line:
+
+![A blame](docs/screenshots/blame.png)
+
+The screenshots are taken in a real terminal by [`scripts/screenshots.sh`](scripts/screenshots.sh), using [VHS](https://github.com/charmbracelet/vhs) on a generated demo repository.
 
 ## Features
 
@@ -117,7 +124,7 @@ The code is organised so that a new screen, input format, theme or key is added 
 
 ## Contributing
 
-Issues and pull requests are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how to build, test and add a feature. Please follow the [code of conduct](CODE_OF_CONDUCT.md).
+Issues and pull requests are welcome, and code review is especially appreciated: see [A note from the author](#a-note-from-the-author). [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how to build, test and add a feature. Please follow the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

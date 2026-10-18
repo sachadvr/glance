@@ -2,3 +2,5 @@
 # Machine-specific notes for Claude Code, next to the shared CLAUDE.md.
 CLAUDE.local.md
 .claude/settings.local.json
+# What VHS records while it takes the screenshots.
+docs/screenshots/.recording.gif
