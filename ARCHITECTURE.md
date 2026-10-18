@@ -10,7 +10,7 @@ runtime.rs ── terminal setup, event loop, OSC 52 clipboard / OSC 22 pointer
 app/ ── tabs of screens, keys and clicks → Commands → screens → Transitions/Effects
   views/ ── one file per screen, each an implementation of `View`
 ui/ ── drawing primitives shared by screens (lists, stat rows, diff lines, clickable rows)
-input/ ── recognising what git piped (log, oneline, reflog, stash list, blame, patch)
+input/ ── recognising what git piped (log, oneline, reflog, stash list, branch list, status, blame, patch)
 git/ ── running git (concrete `Git`, `Repo`, `Base`)
 highlight/ ── syntax colours (syntect + two-face grammars)
 theme/ ── colour themes, the saved choice

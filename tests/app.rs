@@ -148,6 +148,76 @@ fn a_stash_list_is_a_stash_tab() {
 }
 
 #[test]
+fn a_branch_list_is_a_branches_tab_that_marks_the_current_branch() {
+    let mut app = app(BRANCHES);
+
+    let screen = frame(&mut app);
+
+    assert!(screen.header().contains("git branch"), "{}", screen.header());
+    assert!(screen.tab_row().contains("[c] Branches 3"), "{}", screen.tab_row());
+    assert!(screen.rows_containing("  * main Fix the feed").len() == 1 && screen.contains("0123456"), "{}", screen.text());
+    assert!(screen.contains("feature/search [origin/feature/search: ahead 1] Add the search") && screen.contains("89abcde"), "{}", screen.text());
+    assert!(screen.contains("été Corrige l'écran"), "{}", screen.text());
+    assert!(!screen.contains("* feature") && !screen.contains("* été"), "{}", screen.text());
+}
+
+#[test]
+fn a_single_branch_stays_a_list_of_branches() {
+    let mut app = app("* main\n");
+
+    let screen = frame(&mut app);
+
+    assert!(screen.tab_row().contains("[c] Branches 1") && screen.contains("* main"), "{}", screen.text());
+    assert_hints(&screen.footer(), &["fichiers du commit"]);
+}
+
+#[test]
+fn a_branch_is_searched_and_copied_by_its_name() {
+    let mut app = app(BRANCHES);
+
+    search(&mut app, "écran");
+
+    assert_eq!(yank(&mut app).as_deref(), Some("été"));
+}
+
+#[test]
+fn a_detached_head_opens_on_the_files_of_its_commit() {
+    let mut app = app(DETACHED_BRANCHES);
+    assert!(frame(&mut app).contains("* HEAD (HEAD detached at 0123456)"));
+
+    key(&mut app, KeyCode::Enter);
+
+    let screen = frame(&mut app);
+    assert!(screen.contains("← HEAD (HEAD detached at 0123456)"), "{}", screen.text());
+    assert_hints(&screen.footer(), &["← retour"]);
+}
+
+#[test]
+fn a_status_lists_its_files_under_their_directories_with_the_tests_last() {
+    for text in [STATUS, STATUS_SHORT] {
+        let mut app = app(text);
+
+        let screen = frame(&mut app);
+
+        assert!(screen.header().contains("git status"), "{}", screen.header());
+        assert!(screen.tab_row().contains("[f] Fichiers 4"), "{}", screen.tab_row());
+        let order = ["glance-fixture/app/", "M feed.rs", "D parser.rs", "glance-fixture/docs/", "R new.md", "Tests · 1 fichier", "? feed_test.rs"].map(|needle| screen.rows_containing(needle).first().copied());
+        assert!(order.iter().all(Option::is_some) && order.is_sorted(), "{order:?}\n{}", screen.text());
+    }
+}
+
+#[test]
+fn a_status_file_git_has_no_patch_for_still_opens() {
+    let mut app = app(STATUS);
+
+    key(&mut app, KeyCode::Enter);
+
+    let screen = frame(&mut app);
+    assert!(screen.contains("feed.rs"), "{}", screen.text());
+    assert_hints(&wide_footer(&mut app), &["n/p fichier", "← retour"]);
+}
+
+#[test]
 fn a_reflog_shows_its_selectors_and_a_oneline_log_has_no_byline() {
     let mut reflog = app(REFLOG);
     let mut oneline = app(ONELINE);

@@ -139,6 +139,32 @@ pub const REFLOG: &str = "238d6155 (HEAD -> hotfix) HEAD@{0}: cherry-pick: fix(p
 /// `git stash list`.
 pub const STASH: &str = "stash@{0}: WIP on main: 238d615 Fix the feed\nstash@{1}: On feature-x: promotion of attributes\n";
 
+/// `git branch -vv`: the current branch, one with its upstream, a multibyte name.
+pub const BRANCHES: &str = "  feature/search 89abcde [origin/feature/search: ahead 1] Add the search\n* main           0123456 Fix the feed\n  été            fedcba9 Corrige l'écran\n";
+
+/// `git branch` on a detached HEAD: `git show HEAD` opens it in any repository the tests run in.
+pub const DETACHED_BRANCHES: &str = "* (HEAD detached at 0123456)\n  main\n";
+
+/// `git status`, with paths no repository the tests run in holds: they stay as listed, without a patch.
+pub const STATUS: &str = "On branch main
+Changes to be committed:
+  (use \"git restore --staged <file>...\" to unstage)
+\tmodified:   glance-fixture/app/feed.rs
+\trenamed:    glance-fixture/docs/old.md -> glance-fixture/docs/new.md
+
+Changes not staged for commit:
+  (use \"git add <file>...\" to update what will be committed)
+\tdeleted:    glance-fixture/app/parser.rs
+
+Untracked files:
+  (use \"git add <file>...\" to include in what will be committed)
+\tglance-fixture/tests/feed_test.rs
+
+";
+
+/// `git status -sb`, the same files.
+pub const STATUS_SHORT: &str = "## main...origin/main [ahead 1]\nM  glance-fixture/app/feed.rs\nR  glance-fixture/docs/old.md -> glance-fixture/docs/new.md\n D glance-fixture/app/parser.rs\n?? glance-fixture/tests/feed_test.rs\n";
+
 /// `git blame`: two committed lines, then one not committed yet.
 pub const BLAME: &str = "7bfd4f45 (Linus 2024-08-21 23:03:02 +0200 1) <?php\n238d6155 (Grace Hopper 2026-10-16 18:01:20 +0200 2) return $feed;\n00000000 (Not Committed Yet 2026-10-18 10:00:00 +0200 3) echo 'new';\n";
 

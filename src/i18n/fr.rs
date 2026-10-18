@@ -30,6 +30,7 @@ pub const FRENCH: Strings = Strings {
     files_tab: "Fichiers",
     commits_tab: "Commits",
     stash_tab: "Stash",
+    branches_tab: "Branches",
     lines_tab: "Lignes",
     commit_files_tool: "fichiers",
     fetch_running: "⟳ fetch origin…",

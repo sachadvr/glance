@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 - **English interface**, alongside French. The language follows the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`), and `GLANCE_LANG` overrides it.
+- **`git branch` in the pager** (`-v`, `-vv`, `-a`, `-r`, `--merged`…): a Branches tab, the current branch marked `*`; a branch opens on its tip commit's files.
+- **`git status` in the pager**, long and short (`-s`, `-sb`): the files listed, each opening on its uncommitted diff, loaded from git where it ran.
 
 ### Changed
 - Git errors are worded in the interface's language.

@@ -30,6 +30,7 @@ pub const ENGLISH: Strings = Strings {
     files_tab: "Files",
     commits_tab: "Commits",
     stash_tab: "Stash",
+    branches_tab: "Branches",
     lines_tab: "Lines",
     commit_files_tool: "files",
     fetch_running: "⟳ fetching origin…",

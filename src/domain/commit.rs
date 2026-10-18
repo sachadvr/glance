@@ -2,17 +2,18 @@ use std::rc::Rc;
 
 use super::file::{total_stats, ChangeStats, FileDiff};
 
-/// What a commit-like entry is opened through: `git show <hash>` or `git stash show <stash@{n}>`.
+/// What a commit-like entry is opened through: `git show <hash>`, `git show <branch>` (its tip) or `git stash show <stash@{n}>`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Revision {
     Hash(String),
+    Branch(String),
     Stash(String),
 }
 
 impl Revision {
     pub fn as_str(&self) -> &str {
         match self {
-            Revision::Hash(text) | Revision::Stash(text) => text,
+            Revision::Hash(text) | Revision::Branch(text) | Revision::Stash(text) => text,
         }
     }
 }
@@ -26,15 +27,21 @@ pub struct Commit {
     pub when: String,
     /// `None` until known: a log piped without its patches leaves the files to load when the commit opens.
     pub files: Option<Rc<[FileDiff]>>,
+    /// The branch checked out, marked "*" by `git branch`.
+    pub current: bool,
 }
 
 impl Commit {
     pub fn new(revision: Revision, subject: impl Into<String>) -> Commit {
-        Commit { revision, subject: subject.into(), author: String::new(), when: String::new(), files: None }
+        Commit { revision, subject: subject.into(), author: String::new(), when: String::new(), files: None, current: false }
     }
 
     pub fn is_stash(&self) -> bool {
         matches!(self.revision, Revision::Stash(_))
+    }
+
+    pub fn is_branch(&self) -> bool {
+        matches!(self.revision, Revision::Branch(_))
     }
 
     pub fn stats(&self) -> ChangeStats {

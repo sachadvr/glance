@@ -61,11 +61,11 @@ impl Git {
         Ok(String::from_utf8_lossy(&output.stdout).into_owned())
     }
 
-    // `git show` of a stash draws it as a merge, against both its parents; `git stash show` gives the change it
-    // saved, untracked files included.
+    // A branch opens on its tip commit; "--" keeps a branch named like a file a revision. `git show` of a stash
+    // draws it as a merge, against both its parents; `git stash show` gives the change it saved, untracked files included.
     pub fn files_of(&self, revision: &Revision) -> GitResult<Vec<FileDiff>> {
         let patch = match revision {
-            Revision::Hash(hash) => self.run(&["show", "--no-color", "--no-ext-diff", "-M", "--format=", hash])?,
+            Revision::Hash(name) | Revision::Branch(name) => self.run(&["show", "--no-color", "--no-ext-diff", "-M", "--format=", name, "--"])?,
             Revision::Stash(reference) => self.run(&["stash", "show", "--no-color", "--no-ext-diff", "-p", "-M", "--include-untracked", reference])?,
         };
         let mut files = parse_patch(&lines(&patch));

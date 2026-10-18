@@ -2,10 +2,12 @@
 
 mod ansi;
 mod blame;
+mod branch;
 mod log;
 mod oneline;
 mod patch;
 mod stash;
+mod status;
 
 use crate::domain::{BlameLine, Commit, FileDiff};
 
@@ -17,12 +19,14 @@ pub enum Document {
     Diff(Vec<FileDiff>),
     Log(Vec<Commit>),
     Blame(Vec<BlameLine>),
+    /// What `git status` lists, paths as git printed them (relative to where it ran), without patches.
+    Status(Vec<FileDiff>),
 }
 
 impl Document {
     fn is_empty(&self) -> bool {
         match self {
-            Document::Diff(files) => files.is_empty(),
+            Document::Diff(files) | Document::Status(files) => files.is_empty(),
             Document::Log(commits) => commits.is_empty(),
             Document::Blame(lines) => lines.is_empty(),
         }
@@ -33,9 +37,11 @@ type Detector = fn(&[&str]) -> Option<Document>;
 
 // The first that recognises the text wins. A log printed with -p holds patches, and two blame lines of
 // distinct commits read as a oneline log: the medium log goes before the patch, the blame before the oneline log.
-const DETECTORS: [Detector; 5] = [log::detect, blame::detect, oneline::detect, stash::detect, patch::detect];
+// A graph oneline log starts its lines with "* " as a branch list does: the oneline log goes before the branches.
+// `git status -v` follows the status with its patch: the strict status refuses it and the patch takes it.
+const DETECTORS: [Detector; 7] = [log::detect, blame::detect, oneline::detect, stash::detect, branch::detect, status::detect, patch::detect];
 
-/// Recognises what git piped, after its colours are stripped: `None` for what is neither (git branch, --stat, status) or is empty.
+/// Recognises what git piped, after its colours are stripped: `None` for what is none of its formats (--stat) or is empty.
 pub fn read(text: &str) -> Option<Document> {
     let plain = strip_ansi(text);
     let lines: Vec<&str> = plain.lines().collect();
@@ -83,19 +89,45 @@ mod tests {
     }
 
     #[test]
-    fn read_leaves_what_is_neither_a_log_nor_a_patch() {
-        let branch = "* main\n  feature/search\n  deadbeef\n";
-        let stat = " src/a.php | 3 +-\n 1 file changed, 2 insertions(+), 1 deletion(-)\n";
-        let status = "On branch main\nnothing to commit, working tree clean\n";
+    fn read_reads_a_branch_list_as_branches_to_open() {
+        let Some(Document::Log(branches)) = read("* main\n  feature/search\n  deadbeef\n") else { panic!("a branch list") };
 
-        for text in [branch, stat, status, "", "\n\n"] {
+        assert_eq!(branches.iter().map(|branch| branch.revision.clone()).collect::<Vec<_>>(), ["main", "feature/search", "deadbeef"].map(|name| Revision::Branch(name.into())));
+        assert!(branches[0].current && !branches[1].current);
+    }
+
+    #[test]
+    fn read_reads_a_long_and_a_short_status_with_colours() {
+        let long = "On branch main\nChanges not staged for commit:\n  (use \"git add <file>...\" to update what will be committed)\n\t\x1b[31mmodified:   src/a.rs\x1b[m\n\nUntracked files:\n\t\x1b[31mnotes.txt\x1b[m\n";
+        let short = "## main\n\x1b[31m M\x1b[m src/a.rs\n\x1b[31m??\x1b[m notes.txt\n";
+
+        for text in [long, short] {
+            let Some(Document::Status(files)) = read(text) else { panic!("a status: {text}") };
+            assert_eq!(files.iter().map(|file| file.path.as_str()).collect::<Vec<_>>(), ["src/a.rs", "notes.txt"]);
+        }
+    }
+
+    #[test]
+    fn read_takes_a_graph_oneline_log_before_a_branch_list_and_a_verbose_status_as_its_patch() {
+        let verbose_status = format!("On branch main\nChanges to be committed:\n\tmodified:   src/a.php\n\n{}", patch::DIFF);
+
+        assert!(matches!(read("* 0123456 (HEAD -> main) First\n* 89abcde Second\n"), Some(Document::Log(commits)) if !commits[0].is_branch()));
+        assert!(matches!(read(&verbose_status), Some(Document::Diff(files)) if files.len() == 3));
+    }
+
+    #[test]
+    fn read_leaves_a_stat_a_clean_status_and_nothing() {
+        let stat = " src/a.php | 3 +-\n 1 file changed, 2 insertions(+), 1 deletion(-)\n";
+        let clean_status = "On branch main\nnothing to commit, working tree clean\n";
+
+        for text in [stat, clean_status, "## main\n", "", "\n\n"] {
             assert!(read(text).is_none(), "{text}");
         }
     }
 
     #[test]
     fn an_empty_document_is_empty() {
-        assert!(Document::Diff(Vec::new()).is_empty() && Document::Log(Vec::new()).is_empty() && Document::Blame(Vec::new()).is_empty());
+        assert!(Document::Diff(Vec::new()).is_empty() && Document::Log(Vec::new()).is_empty() && Document::Blame(Vec::new()).is_empty() && Document::Status(Vec::new()).is_empty());
         assert!(!Document::Diff(vec![FileDiff::new("a")]).is_empty());
     }
 }

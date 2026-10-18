@@ -26,6 +26,8 @@ pub struct Repo {
     pub name: String,
     pub branch: String,
     pub mainline: Option<String>,
+    /// Where glance runs, from the root ("src/" in a subdirectory, empty at the root): what git's printed paths are relative to.
+    pub prefix: String,
 }
 
 impl Repo {
@@ -34,13 +36,16 @@ impl Repo {
     }
 
     fn discover_from(start: &Git) -> GitResult<Repo> {
-        let root = start.run(&["rev-parse", "--show-toplevel"])?.trim().to_string();
+        let located = start.run(&["rev-parse", "--show-toplevel", "--show-prefix"])?;
+        let mut located = located.lines();
+        let root = located.next().unwrap_or_default().to_string();
+        let prefix = located.next().unwrap_or_default().to_string();
         let git = Git::at(&root);
         let branch = git.run(&["rev-parse", "--abbrev-ref", "HEAD"])?.trim().to_string();
         let name = Path::new(&root).file_name().map_or_else(|| root.clone(), |name| name.to_string_lossy().into_owned());
         let mainline = find_mainline(&git);
 
-        Ok(Repo { git, name, branch, mainline })
+        Ok(Repo { git, name, branch, mainline, prefix })
     }
 
     fn revision(&self, base: &Base) -> GitResult<String> {
@@ -72,6 +77,12 @@ impl Repo {
         Ok(files)
     }
 
+    /// The uncommitted work of the files a `git status` listed, with their patches. A listed file git has no patch
+    /// for stays as listed; the paths stay as the status printed them.
+    pub fn listed_files(&self, listed: &[FileDiff]) -> GitResult<Vec<FileDiff>> {
+        Ok(with_patches(&self.prefix, listed, &self.files(&Base::Worktree)?))
+    }
+
     pub fn commits(&self) -> GitResult<Vec<Commit>> {
         let range = self.mainline.as_ref().map(|mainline| format!("{mainline}..HEAD"));
         let mut args = vec!["log", "--no-color", "--no-ext-diff", "-p", "-M", "--date=relative", "--format=medium"];
@@ -82,6 +93,61 @@ impl Repo {
 
         Ok(parse_log(&lines(&self.git.run(&args)?)))
     }
+}
+
+// "../README.md" printed in "src/" -> "README.md": a path git printed relative to `prefix`, from the root.
+// `None` when it climbs above the root.
+fn from_root(prefix: &str, printed: &str) -> Option<String> {
+    let mut segments: Vec<&str> = prefix.split('/').filter(|segment| !segment.is_empty()).collect();
+    for segment in printed.split('/') {
+        match segment {
+            ".." => {
+                segments.pop()?;
+            }
+            "." | "" => {}
+            _ => segments.push(segment),
+        }
+    }
+    let mut path = segments.join("/");
+    // An untracked directory is listed whole ("notes/"): its slash tells it from a file.
+    if printed.ends_with('/') && !path.is_empty() {
+        path.push('/');
+    }
+    Some(path)
+}
+
+// Each listed file takes the patch of the uncommitted file it names, or of every file under the directory it names.
+// `status.relativePaths=false` prints paths from the root: a path not found from `prefix` is tried as such.
+fn with_patches(prefix: &str, listed: &[FileDiff], uncommitted: &[FileDiff]) -> Vec<FileDiff> {
+    let mut files = Vec::new();
+    for entry in listed {
+        let found = [from_root(prefix, &entry.path), Some(entry.path.clone())].into_iter().flatten().find_map(|root_path| {
+            let named: Vec<FileDiff> = uncommitted.iter().filter(|file| names(&root_path, &file.path)).map(|file| printed_as(entry, &root_path, file)).collect();
+            (!named.is_empty()).then_some(named)
+        });
+        match found {
+            Some(named) => files.extend(named),
+            None => files.push(entry.clone()),
+        }
+    }
+    files
+}
+
+// "src/a.rs" names itself; "notes/" names every file under it.
+fn names(listed: &str, path: &str) -> bool {
+    path == listed || (listed.ends_with('/') && path.starts_with(listed))
+}
+
+// The uncommitted file under the path the status printed: a directory's file keeps the rest of its own path.
+fn printed_as(entry: &FileDiff, root_path: &str, file: &FileDiff) -> FileDiff {
+    let mut printed = file.clone();
+    // "./" is the whole directory git ran in: its files read from there.
+    let directory = entry.path.strip_prefix("./").unwrap_or(&entry.path);
+    printed.path = format!("{directory}{}", &file.path[root_path.len()..]);
+    if entry.old_path.is_some() {
+        printed.old_path = entry.old_path.clone();
+    }
+    printed
 }
 
 fn find_mainline(git: &Git) -> Option<String> {
@@ -217,6 +283,75 @@ mod tests {
         assert_eq!(subjects, ["Add a", "Start"]);
     }
 
+    // `git status` run in "src/", as git would pipe it to its pager, read back by the pager.
+    fn status_in_src(temp: &TempRepo, pathspec: &[&str]) -> Vec<FileDiff> {
+        let output = process::Command::new("git")
+            .arg("-C")
+            .arg(temp.root.join("src"))
+            .args(["-c", "status.relativePaths=true", "-c", "color.status=false", "status", "--long", "--untracked-files=normal"])
+            .args(pathspec)
+            .output()
+            .unwrap();
+        let Some(crate::input::Document::Status(files)) = crate::input::read(&String::from_utf8_lossy(&output.stdout)) else { panic!("a status") };
+        files
+    }
+
+    #[test]
+    fn listed_files_take_the_patches_of_what_a_status_printed_where_git_ran() {
+        let temp = TempRepo::new("status");
+        fs::write(temp.root.join("README.md"), "changed\n").unwrap();
+        fs::create_dir_all(temp.root.join("src/new")).unwrap();
+        fs::write(temp.root.join("src/new/b.rs"), "fn b() {}\n").unwrap();
+        let repo = Repo::discover_from(&Git::at(temp.root.join("src"))).unwrap();
+
+        let mut everything = repo.listed_files(&status_in_src(&temp, &[])).unwrap();
+        let mut here = repo.listed_files(&status_in_src(&temp, &["--", "."])).unwrap();
+        sort_by_directory(&mut everything);
+
+        assert_eq!(repo.prefix, "src/");
+        assert_eq!(paths(&everything), [("../README.md", Status::Modified), ("../notes.txt", Status::Untracked), ("new/b.rs", Status::Untracked)]);
+        assert!(everything.iter().all(|file| file.stats.changed() > 0));
+        sort_by_directory(&mut here);
+        assert_eq!(paths(&here), [("new/b.rs", Status::Untracked)]);
+    }
+
+    #[test]
+    fn from_root_resolves_a_printed_path_against_the_prefix() {
+        assert_eq!(from_root("src/", "a.rs").as_deref(), Some("src/a.rs"));
+        assert_eq!(from_root("src/app/", "../../README.md").as_deref(), Some("README.md"));
+        assert_eq!(from_root("", "./notes/").as_deref(), Some("notes/"));
+        assert_eq!(from_root("src/", "../"), Some(String::new()));
+        assert_eq!(from_root("src/", "../../outside"), None);
+    }
+
+    #[test]
+    fn with_patches_keeps_what_git_has_no_patch_for_as_listed() {
+        let mut changed = FileDiff::new("src/a.rs");
+        changed.lines = vec!["@@ -1 +1 @@".to_string()];
+        let mut renamed = FileDiff::new("src/new.rs");
+        renamed.status = Status::Renamed;
+        renamed.old_path = Some("src/old.rs".to_string());
+        let mut listed_rename = FileDiff::new("new.rs");
+        listed_rename.old_path = Some("old.rs".to_string());
+
+        let files = with_patches("src/", &[FileDiff::new("a.rs"), listed_rename, FileDiff::new("gone.rs")], &[changed, renamed, FileDiff::new("unlisted.rs")]);
+
+        let read: Vec<(&str, Option<&str>, usize)> = files.iter().map(|file| (file.path.as_str(), file.old_path.as_deref(), file.lines.len())).collect();
+        assert_eq!(read, [("a.rs", None, 1), ("new.rs", Some("old.rs"), 0), ("gone.rs", None, 0)]);
+        assert_eq!(files[1].status, Status::Renamed);
+    }
+
+    #[test]
+    fn with_patches_spreads_an_untracked_directory_into_its_files() {
+        let uncommitted = ["src/sub/n.rs", "src/sub/m.rs", "README.md"].map(FileDiff::new);
+
+        let files = with_patches("src/", &[FileDiff::new("./")], &uncommitted);
+        let nested = with_patches("", &[FileDiff::new("src/sub/")], &uncommitted);
+
+        assert_eq!(files.iter().map(|file| file.path.as_str()).collect::<Vec<_>>(), ["sub/n.rs", "sub/m.rs"]);
+        assert_eq!(nested.iter().map(|file| file.path.as_str()).collect::<Vec<_>>(), ["src/sub/n.rs", "src/sub/m.rs"]);
+    }
+
     #[test]
     fn git_loads_a_commit_its_subject_and_a_stash() {
         let temp = TempRepo::new("show");
@@ -224,6 +359,7 @@ mod tests {
         let head = temp.git(&["rev-parse", "HEAD"]);
 
         assert_eq!(paths(&repo.git.files_of(&Revision::Hash(head.clone())).unwrap()), [("src/a.rs", Status::Added)]);
+        assert_eq!(paths(&repo.git.files_of(&Revision::Branch("main".to_string())).unwrap()), [("README.md", Status::Added)]);
         assert_eq!(repo.git.subject(&head).unwrap(), "Add a");
 
         fs::write(temp.root.join("README.md"), "changed\n").unwrap();

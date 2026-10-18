@@ -53,7 +53,7 @@ fn blamed_path() -> Option<String> {
     (!last.starts_with('-') && last != "blame").then(|| last.to_string())
 }
 
-// What has no patch (`git branch`, `git diff --stat`) goes to less, as git would have sent it.
+// What glance does not read (`git diff --stat`, `git shortlog`) goes to less, as git would have sent it.
 fn page_plainly(input: &[u8]) -> Result<(), Box<dyn Error>> {
     let mut less = Command::new("less").arg("-FRX").stdin(Stdio::piped()).spawn()?;
     if let Some(mut stdin) = less.stdin.take() {

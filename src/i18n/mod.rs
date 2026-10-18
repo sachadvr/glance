@@ -48,6 +48,7 @@ pub struct Strings {
     pub files_tab: &'static str,
     pub commits_tab: &'static str,
     pub stash_tab: &'static str,
+    pub branches_tab: &'static str,
     pub lines_tab: &'static str,
     pub commit_files_tool: &'static str,
     pub fetch_running: &'static str,

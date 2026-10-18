@@ -95,18 +95,22 @@ impl App {
         let (command, root): (String, Box<dyn View>) = match &document {
             Document::Diff(_) => ("git diff".to_string(), Box::new(FilesView::default())),
             Document::Log(commits) if commits.first().is_some_and(|commit| commit.is_stash()) => ("git stash".to_string(), Box::new(CommitsView::default())),
+            Document::Log(commits) if commits.first().is_some_and(|commit| commit.is_branch()) => ("git branch".to_string(), Box::new(CommitsView::default())),
             Document::Log(_) => ("git log".to_string(), Box::new(CommitsView::default())),
             Document::Blame(_) => (format!("git blame  {}", blamed_path.as_deref().unwrap_or("")), Box::new(BlameView::default())),
+            Document::Status(_) => ("git status".to_string(), Box::new(FilesView::default())),
         };
         let mut session = Session::new(Source::Pager { command });
         match document {
             Document::Diff(files) => session.set_files(files),
             Document::Log(commits) => session.commits = commits,
             Document::Blame(lines) => session.blame = Blame { path: blamed_path, lines },
+            // A status names files without their changes: git, run where it did, has them.
+            Document::Status(listed) => session.set_files(Repo::discover().and_then(|repo| repo.listed_files(&listed)).unwrap_or(listed)),
         }
         let mut app = App::new(session, vec![root], theme, strings);
-        // `git show` sends one commit: its files are what there is to look at.
-        if app.session.commits.len() == 1 {
+        // `git show` sends one commit: its files are what there is to look at. A single branch is still a list of branches.
+        if app.session.commits.len() == 1 && !app.session.commits[0].is_branch() {
             app.execute(Command::Open);
         }
         app

@@ -29,7 +29,7 @@ The screenshots are taken in a real terminal by [`scripts/screenshots.sh`](scrip
 ## Features
 
 - **Two ways in**
-  - **As git's pager:** `git diff`, `git log`, `git show`, `git stash list`, `git reflog` and `git blame` open in glance instead of `less`.
+  - **As git's pager:** `git diff`, `git log`, `git show`, `git stash list`, `git reflog`, `git branch`, `git status` and `git blame` open in glance instead of `less`.
   - **As a branch browser:** run `glance` in a repository to see your uncommitted work and the commits of your branch.
 - **Readable diffs**
   - Syntax highlighting, using bat's grammars: TypeScript, Vue, PHP, Rust, Dockerfile…
@@ -41,13 +41,14 @@ The screenshots are taken in a real terminal by [`scripts/screenshots.sh`](scrip
   - Compare against your uncommitted work, your main branch (`origin/main`, found automatically) or any commit of the branch.
   - The remote is fetched in the background when the browser starts.
 - **Blame you can follow:** jump from a line to the commit that last wrote it.
+- **Branches and status you can open:** a branch opens on its tip commit's files, the current one marked `*`; a status file opens on its uncommitted diff.
 - **Search** in any list or diff with `/`, step through matches with `n` / `N`.
 - **Copy** a path, a hash or a whole diff with `y` / `Y`. It goes through the terminal (OSC 52), so it also works over SSH.
 - **Mouse support:** click rows, tabs and buttons, and scroll with the wheel.
 - **6 themes:** Tokyo Night, Catppuccin Mocha, Dracula, Nord, Gruvbox Dark and GitHub Light. Your choice is remembered.
 - **English and French:** the language follows your locale. Adding a language is a single file.
 
-Anything glance does not recognise (`git branch`, `git status`, `--stat`…) is handed to `less`, as git would have done.
+Anything glance does not recognise (`--stat`, `git shortlog`, a `git status` in a translated git…) is handed to `less`, as git would have done.
 
 ## Install
 
@@ -80,9 +81,13 @@ git config --global pager.diff glance
 git config --global pager.log glance
 git config --global pager.show glance
 git config --global pager.blame glance
+git config --global pager.branch glance
+git config --global pager.status glance
 ```
 
-Then use git as usual: `git diff`, `git log -p`, `git show HEAD~2`, `git log --oneline --graph`, `git stash list`, `git blame src/main.rs`.
+`git status` does not use a pager unless `pager.status` is set; `git branch` uses one when listing branches.
+
+Then use git as usual: `git diff`, `git log -p`, `git show HEAD~2`, `git log --oneline --graph`, `git stash list`, `git branch -vv`, `git status`, `git blame src/main.rs`.
 
 To browse the current branch, run `glance` in the repository, with nothing piped to it.
 
@@ -123,7 +128,7 @@ There is no configuration file to write.
 ## How it works
 
 glance has two entry points:
-- When git runs it as a pager, it reads what git piped and works out the format: log, oneline log, reflog, stash list, blame or patch. It then shows it as lists.
+- When git runs it as a pager, it reads what git piped and works out the format: log, oneline log, reflog, stash list, branch list, status, blame or patch. It then shows it as lists.
 - When run in a repository, it asks git directly.
 
 The code is organised so that a new screen, input format, theme or key is added rather than edited in. [`ARCHITECTURE.md`](ARCHITECTURE.md) explains the layers and the extension points.

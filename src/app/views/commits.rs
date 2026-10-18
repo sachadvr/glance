@@ -3,6 +3,7 @@ use ratatui::style::{Style, Stylize};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{ListItem, Paragraph};
 use ratatui::Frame;
+use unicode_width::UnicodeWidthStr;
 
 use super::{CommitFilesView, ListCursor};
 use crate::app::command::Command;
@@ -73,7 +74,11 @@ impl View for CommitsView {
     }
 
     fn tab_title(&self, session: &Session, strings: &'static Strings) -> Option<TabTitle> {
-        let label = if session.commits.first().is_some_and(Commit::is_stash) { strings.stash_tab } else { strings.commits_tab };
+        let label = match session.commits.first() {
+            Some(commit) if commit.is_stash() => strings.stash_tab,
+            Some(commit) if commit.is_branch() => strings.branches_tab,
+            _ => strings.commits_tab,
+        };
         Some(TabTitle { key: 'c', label, count: session.commits.len(), stats: session.commits.iter().map(Commit::stats).sum() })
     }
 
@@ -125,10 +130,12 @@ fn commit_item(commit: &Commit, width: usize, shows_files: bool, paint: &Paint) 
     details.extend(stat_spans(commit.stats(), theme));
 
     let hash = commit.revision.as_str();
+    // The branch checked out wears git's own "*".
+    let (marker, style) = if commit.current { ("* ", Style::new().fg(theme.green).bold()) } else { ("", Style::new().fg(theme.accent)) };
     let mut lines = vec![
         Line::from(vec![
-            Span::styled(format!(" {hash} "), Style::new().fg(theme.accent)),
-            Span::raw(fit_end(&commit.subject, width.saturating_sub(hash.len() + 2))).bold(),
+            Span::styled(format!(" {marker}{hash} "), style),
+            Span::raw(fit_end(&commit.subject, width.saturating_sub(marker.len() + hash.width() + 2))).bold(),
         ]),
         Line::from(details),
     ];

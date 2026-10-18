@@ -53,6 +53,8 @@ fn the_commit_screens_speak_english() {
 fn a_stash_list_and_a_blame_speak_english() {
     let stash = frame(&mut app_in(STASH, &ENGLISH));
     assert!(stash.tab_row().contains("[c] Stash 2"), "{}", stash.text());
+    let branches = frame(&mut app_in(BRANCHES, &ENGLISH));
+    assert!(branches.tab_row().contains("[c] Branches 3"), "{}", branches.text());
 
     let mut blame = App::for_document(document(BLAME), Some("src/feed.php".to_string()), ThemeSelection::default(), &ENGLISH);
     let screen = frame(&mut blame);
