@@ -49,6 +49,7 @@ Read [`ARCHITECTURE.md`](ARCHITECTURE.md) first: it is short. Most features are 
 | a key or a clickable button | a `Binding` in the screen's `keymap()` (with a `hint` for the footer) |
 | a format git can pipe | a detector in `src/input/` plus one line in `DETECTORS` |
 | a theme | one entry in `THEMES` (`src/theme/catalog.rs`) |
+| a language | a file in `src/i18n/` plus one entry in `LANGUAGES` |
 | a git operation | a method on `Git` or `Repo` (`src/git/`) |
 
 Step-by-step guides for each of these are in [`.claude/skills/`](.claude/skills). They are written for Claude Code, but read just as well by humans.
@@ -63,7 +64,7 @@ Step-by-step guides for each of these are in [`.claude/skills/`](.claude/skills)
 - **No `match` on concrete screens in the app.** Add a `View` method with a default instead.
 - **Keys are declared once, with their footer hint.** No footer text is written by hand.
 - **Comments explain *why*, not *what*.** Names are spelled out; guard clauses are preferred over nesting.
-- **User-facing text** is French for now, until the interface is translated. Code, comments and commit messages are English.
+- **User-facing text** lives in `src/i18n/`, never inline: add the text to `Strings` and to every language. Code, comments and commit messages are English.
 
 ### Pull requests
 

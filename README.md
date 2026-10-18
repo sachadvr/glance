@@ -8,8 +8,6 @@ Diffs, logs, stashes and blames become lists you can scroll, search and click th
 
 ![The branch browser: changed files grouped by directory, tests last, counted from origin/main](docs/screenshots/files.png)
 
-> The interface is currently in **French**. An English translation is welcome — see [Contributing](#contributing).
-
 ## A note from the author
 
 I am still learning Rust: I know the basics, and **most of this code was written with the help of AI**. I designed it, reviewed it, tested it, and use it every day. But an experienced Rustacean will surely find things to improve: idioms, performance, error handling, structure.
@@ -47,6 +45,7 @@ The screenshots are taken in a real terminal by [`scripts/screenshots.sh`](scrip
 - **Copy** a path, a hash or a whole diff with `y` / `Y`. It goes through the terminal (OSC 52), so it also works over SSH.
 - **Mouse support:** click rows, tabs and buttons, and scroll with the wheel.
 - **6 themes:** Tokyo Night, Catppuccin Mocha, Dracula, Nord, Gruvbox Dark and GitHub Light. Your choice is remembered.
+- **English and French:** the language follows your locale. Adding a language is a single file.
 
 Anything glance does not recognise (`git branch`, `git status`, `--stat`…) is handed to `less`, as git would have done.
 
@@ -112,7 +111,14 @@ The footer always shows the keys that work on the current screen.
 
 ## Configuration
 
-There is no configuration file to write. The theme you pick with `t` is saved to `$XDG_CONFIG_HOME/glance/theme`, or `~/.config/glance/theme` if `XDG_CONFIG_HOME` is not set.
+There is no configuration file to write.
+
+- **Theme:** the one you pick with `t` is saved to `$XDG_CONFIG_HOME/glance/theme`, or `~/.config/glance/theme` if `XDG_CONFIG_HOME` is not set.
+- **Language:** English or French, taken from your locale (`LC_ALL`, `LC_MESSAGES`, then `LANG`). English is used for any other locale. To choose one regardless of your locale:
+
+  ```sh
+  export GLANCE_LANG=fr   # or en
+  ```
 
 ## How it works
 

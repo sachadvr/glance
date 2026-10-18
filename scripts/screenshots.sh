@@ -23,6 +23,8 @@ printf 'Tokyo Night' > "$scratch/config/glance/theme"
 
 export DEMO_REPOSITORY="$scratch/weather"
 export XDG_CONFIG_HOME="$scratch/config"
+# The README is in English, whatever the locale of whoever regenerates it.
+export GLANCE_LANG=en
 export PATH="$repository/target/release:$PATH"
 export GIT_CONFIG_GLOBAL=/dev/null
 

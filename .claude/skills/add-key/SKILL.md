@@ -18,10 +18,10 @@ bindings in force, so a key and its help can never disagree.
    - the root layer `App::root_bindings` — tab switching and repository actions, only on a tab's first screen;
    - `keymap::global()` — what every screen does (/, y, t, q).
 3. **Declare the binding**: `Binding::new(command, &[char('x'), key(KeyCode::F(2)), ctrl('x')])`; add
-   `.hint("x", "libellé")` to show it in the footer. Bindings sharing a label are grouped ("n/p fichier"), so give
+   `.hint("x", strings.label)` (a `Strings` field) to show it in the footer. Bindings sharing a label are grouped ("n/p fichier"), so give
    paired keys the same label. Uppercase letters already imply Shift; Control is explicit (`ctrl`).
 4. **Handle the command**: in the screen's `View::handle`, or in `App::execute` if the app owns it (theme,
-   search, tabs, base, fetch). User-facing text in French.
+   search, tabs, base, fetch). User-facing text comes from `i18n::Strings` (see `add-language`).
 5. **A clickable span** for the same action: `row.push_target(span, Command::…)` in the screen's render or in
    `src/app/chrome.rs`. Never map a click to a fake key press. Hover styling is automatic.
 

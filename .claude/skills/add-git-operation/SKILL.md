@@ -17,7 +17,7 @@ repository browser has (branch, main line, `Base`). Running git and parsing its 
 2. **Parse** with `input::*` when the output is a format the pager already reads (`parse_patch`, `parse_log`);
    otherwise write a pure parser next to it and unit-test it on fixtures.
 3. **Expose** a method returning `GitResult<domain type>` on `Git` (works in pager mode too, `Git::here()`) or on
-   `Repo` (browser only). Error messages shown to the user are French.
+   `Repo` (browser only). Errors the user should read in their language are `GitError` variants, worded in `Strings::git_error`; git's own stderr stays `GitError::Failed`.
 4. **Call it from the app**: through a `Session` method if the result is shared state (it owns the data), or
    directly in a screen's `handle` via `context.session.git()`; report failures with `context.fail(error)`.
 5. **Long or networked** operations (like `fetch`) run on a thread: follow `App::start_fetch` /

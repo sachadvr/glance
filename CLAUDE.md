@@ -21,6 +21,7 @@ Each extension point has a project skill; use it instead of improvising:
 | a key or a mouse action         | `add-key`           |
 | a format git pipes to the pager | `add-input-format`  |
 | a theme                         | `add-theme`         |
+| a language, or a new text       | `add-language`      |
 | a git operation                 | `add-git-operation` |
 | verify, then install the binary | `ship`              |
 
@@ -46,7 +47,9 @@ Each extension point has a project skill; use it instead of improvising:
 - Comments say *why*, in the terse voice already used (`// A blame does not name its file, but git …`); never *what*.
 - Descriptive names, no abbreviations; guard clauses (`let … else`) over nesting; one space around operators,
   no vertical alignment; long single-line expressions are fine (rustfmt is not used).
-- User-facing text is French ("aucun résultat", "copié : …"); code, comments and commits are English.
+- User-facing text never sits inline: it is a field of `i18n::Strings`, filled in every language (`src/i18n/*.rs`), reached
+  through `context.strings` / `paint.strings` / the `strings` given to `keymap()`. Git errors are `GitError` values worded by
+  `Strings::git_error`. Code, comments and commits are English.
 
 ## Tests
 

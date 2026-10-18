@@ -14,8 +14,12 @@ input/ ── recognising what git piped (log, oneline, reflog, stash list, blam
 git/ ── running git (concrete `Git`, `Repo`, `Base`)
 highlight/ ── syntax colours (syntect + two-face grammars)
 theme/ ── colour themes, the saved choice
+i18n/ ── what glance says, one `Strings` per language, picked from the locale
 domain/ ── what is shown: files, commits, blame lines, diff rows, word emphasis (pure, no IO)
 ```
+
+The language is chosen once at startup (`i18n::detect`) and, like the theme, handed to screens as a value
+(`Context::strings`, `Paint::strings`, `View::keymap`): a text missing from a language does not compile.
 
 Dependencies point downwards: `domain` knows nothing else; `input` and `git` produce `domain`
 values; `app` composes everything; only `runtime` and `main` touch the terminal and the process.
@@ -48,6 +52,7 @@ browses, so a reload or a fetch never pulls an index from under it.
 | a key                           | a `Binding` in the screen's `keymap()` (with a `hint` to show it in the footer)      |
 | an input format git can pipe    | a file in `input/` with `detect`, one line in `DETECTORS` (order matters, it is tested) |
 | a theme                         | one entry in `theme::THEMES`                                                          |
+| a language                      | a file in `i18n/` with a `Strings` value, one entry in `i18n::LANGUAGES`              |
 | a git operation                 | a method on `Git`/`Repo`, parsing its output with `input::*`                           |
 
 ## Testing

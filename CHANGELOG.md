@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- **English interface**, alongside French. The language follows the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`), and `GLANCE_LANG` overrides it.
+
+### Changed
+- Git errors are worded in the interface's language.
+
 ## [0.1.0] - 2026-10-18
 
 First public release.
