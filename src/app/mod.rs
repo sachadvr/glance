@@ -13,6 +13,7 @@ use std::thread;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::Position;
 use ratatui::Frame;
+use ratatui_image::picker::Picker;
 
 use crate::domain::Blame;
 use crate::git::{Base, Repo};
@@ -54,6 +55,7 @@ pub struct App {
     settings: Settings,
     theme: ThemeSelection,
     strings: &'static Strings,
+    picker: Picker,
     search: Search,
     status: Option<Status>,
     hits: Vec<Hit>,
@@ -72,6 +74,8 @@ impl App {
             settings: Settings::default(),
             theme,
             strings,
+            // Half blocks draw anywhere, a test backend included, until the runtime has asked the terminal for better.
+            picker: Picker::halfblocks(),
             search: Search::default(),
             status: None,
             hits: Vec::new(),
@@ -114,6 +118,11 @@ impl App {
             app.execute(Command::Open);
         }
         app
+    }
+
+    /// How the terminal draws images: the runtime asks it, the app only hands the answer to its screens.
+    pub fn set_picker(&mut self, picker: Picker) {
+        self.picker = picker;
     }
 
     pub fn should_quit(&self) -> bool {
@@ -181,7 +190,7 @@ impl App {
         let theme = self.theme.current();
         let top = self.tabs[self.active].last_mut().expect("a tab keeps its first screen");
         let mut effects = Vec::new();
-        top.prepare(&mut Context { session: &mut self.session, settings: &mut self.settings, theme, strings: self.strings, effects: &mut effects });
+        top.prepare(&mut Context { session: &mut self.session, settings: &mut self.settings, theme, strings: self.strings, picker: &self.picker, effects: &mut effects });
         self.apply(effects);
         self.hits = chrome::draw(frame, self);
     }
@@ -317,7 +326,7 @@ impl App {
         let theme = self.theme.current();
         let mut effects = Vec::new();
         let top = self.tabs[self.active].last_mut().expect("a tab keeps its first screen");
-        let transition = top.handle(command, &mut Context { session: &mut self.session, settings: &mut self.settings, theme, strings: self.strings, effects: &mut effects });
+        let transition = top.handle(command, &mut Context { session: &mut self.session, settings: &mut self.settings, theme, strings: self.strings, picker: &self.picker, effects: &mut effects });
         match transition {
             Transition::Stay => {}
             Transition::Push(view) => self.push_screen(view),

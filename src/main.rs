@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::fs::File;
 use std::io::{self, IsTerminal, Read, Write};
 use std::process::{Command, ExitCode, Stdio};
 
@@ -34,8 +35,19 @@ fn run() -> Result<(), Box<dyn Error>> {
     }
 
     match input::read(&String::from_utf8_lossy(&piped)) {
-        Some(document) => runtime::run(App::for_document(document, blamed_path(), ThemeSelection::restore(), language())),
+        Some(document) => {
+            reattach_stdin_to_terminal();
+            runtime::run(App::for_document(document, blamed_path(), ThemeSelection::restore(), language()))
+        }
         None => page_plainly(&piped),
+    }
+}
+
+// The terminal answers the graphics query on stdin, which was git's pipe: drained, it can be the terminal again, as
+// less reads its keys. Should it fail, images are drawn in half blocks.
+fn reattach_stdin_to_terminal() {
+    if let Ok(terminal) = File::open("/dev/tty") {
+        let _ = rustix::stdio::dup2_stdin(&terminal);
     }
 }
 

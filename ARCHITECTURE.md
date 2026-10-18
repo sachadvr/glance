@@ -6,10 +6,10 @@ A git pager (`core.pager = glance`) and a branch browser (`glance` run in a repo
 
 ```
 main.rs ── picks the source: a pipe from git (pager) or the repository (browser)
-runtime.rs ── terminal setup, event loop, OSC 52 clipboard / OSC 22 pointer
+runtime.rs ── terminal setup, graphics query (images), event loop, OSC 52 clipboard / OSC 22 pointer
 app/ ── tabs of screens, keys and clicks → Commands → screens → Transitions/Effects
   views/ ── one file per screen, each an implementation of `View`
-ui/ ── drawing primitives shared by screens (lists, stat rows, diff lines, clickable rows)
+ui/ ── drawing primitives shared by screens (lists, stat rows, diff lines, clickable rows, images)
 input/ ── recognising what git piped (log, oneline, reflog, stash list, branch list, status, blame, patch)
 git/ ── running git (concrete `Git`, `Repo`, `Base`)
 highlight/ ── syntax colours (syntect + two-face grammars)
@@ -20,6 +20,8 @@ domain/ ── what is shown: files, commits, blame lines, diff rows, word empha
 
 The language is chosen once at startup (`i18n::detect`) and, like the theme, handed to screens as a value
 (`Context::strings`, `Paint::strings`, `View::keymap`): a text missing from a language does not compile.
+How the terminal draws images (kitty, iTerm2, sixel or half blocks) is asked once by `runtime` and handed down the same
+way (`App::set_picker`, `Context::picker`); the app starts with half blocks, which is what the tests draw.
 
 Dependencies point downwards: `domain` knows nothing else; `input` and `git` produce `domain`
 values; `app` composes everything; only `runtime` and `main` touch the terminal and the process.

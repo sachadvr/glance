@@ -34,7 +34,7 @@ impl View for FilesView {
         match command {
             Command::Move(motion) => self.cursor.apply(motion, files.len()),
             Command::Open if !files.is_empty() => {
-                return Transition::Push(Box::new(DiffView::new(Rc::clone(files), self.cursor.within(files.len()), context.theme)));
+                return Transition::Push(Box::new(DiffView::new(Rc::clone(files), self.cursor.within(files.len()), None, context.theme)));
             }
             _ => {}
         }

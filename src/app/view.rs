@@ -1,6 +1,7 @@
 use ratatui::layout::Rect;
 use ratatui::text::Span;
 use ratatui::Frame;
+use ratatui_image::picker::Picker;
 
 use super::command::Command;
 use super::keymap::Binding;
@@ -33,6 +34,8 @@ pub struct Context<'a> {
     pub settings: &'a mut Settings,
     pub theme: &'static Theme,
     pub strings: &'static Strings,
+    /// How the terminal draws images, asked of it once at startup.
+    pub picker: &'a Picker,
     pub effects: &'a mut Vec<Effect>,
 }
 

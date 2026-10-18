@@ -47,6 +47,7 @@ pub const FRENCH: Strings = Strings {
     not_committed_yet: "pas encore commitée",
     previous_file: "◀ préc",
     next_file: "suiv ▶",
+    image_unavailable: "aperçu de l'image indisponible",
     file_count: |count| format!("{count} fichier{}", if count > 1 { "s" } else { "" }),
     tests_section: |count| format!("Tests · {count} fichier{}", if count > 1 { "s" } else { "" }),
     more_files: |count| format!("… {count} autre{}", if count > 1 { "s" } else { "" }),

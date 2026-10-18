@@ -47,7 +47,7 @@ impl View for CommitFilesView {
             Command::Move(motion) => self.cursor.apply(motion, length),
             Command::Open if length > 0 => {
                 let files = self.commit.files.clone().unwrap_or_else(|| Rc::from([]));
-                return Transition::Push(Box::new(DiffView::new(files, self.cursor.within(length), context.theme)));
+                return Transition::Push(Box::new(DiffView::new(files, self.cursor.within(length), Some(self.commit.revision.clone()), context.theme)));
             }
             Command::Back => return Transition::Pop,
             _ => {}

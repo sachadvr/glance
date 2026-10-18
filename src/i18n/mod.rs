@@ -66,6 +66,8 @@ pub struct Strings {
     pub not_committed_yet: &'static str,
     pub previous_file: &'static str,
     pub next_file: &'static str,
+    /// In place of an image the file view could not read or decode.
+    pub image_unavailable: &'static str,
     pub file_count: fn(usize) -> String,
     pub tests_section: fn(usize) -> String,
     pub more_files: fn(usize) -> String,

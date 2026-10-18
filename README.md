@@ -38,6 +38,7 @@ The screenshots are taken in a real terminal by [`scripts/screenshots.sh`](scrip
   - Line numbers on both sides.
   - Word-level highlighting of what actually changed in a modified line.
   - Long lines wrap if you want them to.
+  - A changed image (PNG, JPEG, GIF, WebP) shows its current version instead of "Binary files differ": with the terminal's graphics (kitty, iTerm2, sixel), in coloured half blocks elsewhere.
 - **Files grouped the way you read them:** by directory, with the tests in their own section after the code.
 - **"Changed since…"**
   - Compare against your uncommitted work, your main branch (`origin/main`, found automatically) or any commit of the branch.

@@ -47,6 +47,7 @@ pub const ENGLISH: Strings = Strings {
     not_committed_yet: "not committed yet",
     previous_file: "◀ prev",
     next_file: "next ▶",
+    image_unavailable: "image preview unavailable",
     file_count: |count| format!("{count} file{}", if count == 1 { "" } else { "s" }),
     tests_section: |count| format!("Tests · {count} file{}", if count == 1 { "" } else { "s" }),
     more_files: |count| format!("… {count} more"),

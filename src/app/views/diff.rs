@@ -12,17 +12,27 @@ use crate::app::command::{Command, Motion};
 use crate::app::keymap::{self, char, ctrl, key, Binding};
 use crate::app::session::Session;
 use crate::app::view::{Context, Effect, Paint, Transition, View};
-use crate::domain::{diff_rows, DiffRow, FileDiff};
+use crate::domain::{diff_rows, DiffRow, FileDiff, Revision};
 use crate::highlight::{highlight, Segment};
 use crate::i18n::Strings;
 use crate::theme::Theme;
-use crate::ui::{diff_lines, grey, spans_width, stat_spans, status_color, Hit, Row};
+use crate::ui::{diff_lines, draw_picture, grey, spans_width, stat_spans, status_color, Hit, Picture, Row};
 
 const WHEEL_ROWS: usize = 3;
+
+/// What an image shows in place of git's "Binary files … differ": its current version, not a before and after.
+enum Preview {
+    /// Read at the next draw, whose `prepare` has git and the terminal's picker at hand.
+    Pending,
+    Ready(Box<Picture>),
+    Unavailable,
+}
 
 /// One file's diff, among the files it was opened from: n/p step to its neighbours.
 pub struct DiffView {
     files: Rc<[FileDiff]>,
+    /// What changed the files, an image's current version being read from it; the working tree without one.
+    revision: Option<Revision>,
     index: usize,
     scroll: usize,
     /// The row the last search landed on: near the end it sits below the top row, which cannot scroll further.
@@ -31,11 +41,12 @@ pub struct DiffView {
     page: usize,
     rows: Vec<DiffRow>,
     colors: Vec<Option<Vec<Segment>>>,
+    preview: Option<Preview>,
 }
 
 impl DiffView {
-    pub fn new(files: Rc<[FileDiff]>, index: usize, theme: &Theme) -> DiffView {
-        let mut view = DiffView { files, index, scroll: 0, found: None, page: 20, rows: Vec::new(), colors: Vec::new() };
+    pub fn new(files: Rc<[FileDiff]>, index: usize, revision: Option<Revision>, theme: &Theme) -> DiffView {
+        let mut view = DiffView { files, revision, index, scroll: 0, found: None, page: 20, rows: Vec::new(), colors: Vec::new(), preview: None };
         view.load(index, theme);
         view
     }
@@ -55,6 +66,7 @@ impl DiffView {
         self.found = None;
         self.rows = diff_rows(self.file());
         self.colors = highlight(&self.file().path, &self.rows, theme.syntax);
+        self.preview = self.file().shows_image().then_some(Preview::Pending);
     }
 
     // The last page stays full: scrolling stops when the last row reaches the bottom.
@@ -104,6 +116,17 @@ impl View for DiffView {
         let heading = self.heading(width, paint);
         let hits = heading.hits(title, 0).collect();
         frame.render_widget(Paragraph::new(vec![Line::from(heading.spans), Line::from(grey("─".repeat(width), paint.theme))]), title);
+        match &mut self.preview {
+            Some(Preview::Ready(picture)) => {
+                draw_picture(frame, body, picture);
+                return hits;
+            }
+            Some(Preview::Unavailable) => {
+                frame.render_widget(Paragraph::new(grey(format!(" {}", paint.strings.image_unavailable), paint.theme)), body);
+                return hits;
+            }
+            Some(Preview::Pending) | None => {}
+        }
         let lines: Vec<Line> = self
             .rows
             .iter()
@@ -114,6 +137,15 @@ impl View for DiffView {
             .collect();
         frame.render_widget(Paragraph::new(lines), body);
         hits
+    }
+
+    // Whatever fails (a file gone, a pager run outside its repository, a broken image), the screen says so and goes on.
+    fn prepare(&mut self, context: &mut Context) {
+        let Some(Preview::Pending) = self.preview else {
+            return;
+        };
+        let picture = context.session.git().content(self.revision.as_ref(), &self.file().path).ok().and_then(|bytes| Picture::decode(&bytes, context.picker));
+        self.preview = Some(picture.map_or(Preview::Unavailable, |picture| Preview::Ready(Box::new(picture))));
     }
 
     fn restyle(&mut self, theme: &Theme) {

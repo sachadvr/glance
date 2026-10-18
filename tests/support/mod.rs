@@ -2,8 +2,14 @@
 //! and the rendered screen read back as text.
 #![allow(dead_code)]
 
+use std::fs;
+use std::io::Cursor;
+use std::path::PathBuf;
+
 use glance::i18n::FRENCH;
 use glance::app::App;
+use glance::git::Repo;
+use image::{ImageFormat, Rgb, RgbImage};
 use glance::input::{self, Document};
 use glance::theme::ThemeSelection;
 use ratatui::backend::TestBackend;
@@ -179,6 +185,68 @@ pub fn app(text: &str) -> App {
 pub fn blame_app() -> App {
     App::for_document(document(BLAME), Some("src/feed.php".to_string()), ThemeSelection::default(), &FRENCH)
 }
+
+// ---------------------------------------------------------------- repository
+
+/// A throwaway repository in the temp directory, "main" with a first commit: what the browser opens. Gone once dropped.
+pub struct TempRepo {
+    pub root: PathBuf,
+}
+
+impl TempRepo {
+    pub fn new(name: &str) -> TempRepo {
+        let root = std::env::temp_dir().join(format!("glance-app-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("a temp directory");
+        let repo = TempRepo { root };
+        repo.git(&["init", "--quiet", "--initial-branch=main"]);
+        repo.write("README.md", b"hello\n");
+        repo.commit("README.md", "Start");
+        repo
+    }
+
+    // The user's own config (signing, hooks) must not leak into the test.
+    pub fn git(&self, args: &[&str]) {
+        let output = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&self.root)
+            .args(["-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null"])
+            .args(args)
+            .output()
+            .expect("git runs");
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    pub fn write(&self, path: &str, content: &[u8]) {
+        fs::write(self.root.join(path), content).expect("a file written");
+    }
+
+    pub fn commit(&self, path: &str, subject: &str) {
+        self.git(&["add", path]);
+        self.git(&["commit", "--quiet", "-m", subject]);
+    }
+
+    pub fn app(&self) -> App {
+        App::for_repo(Repo::open(&self.root).expect("the repository opens"), ThemeSelection::default(), &FRENCH)
+    }
+}
+
+impl Drop for TempRepo {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.root);
+    }
+}
+
+/// A PNG made here rather than kept as a binary fixture. It darkens downwards: a cell of one colour would be drawn as a
+/// blank, a half block "▀" says the image is there.
+pub fn png(width: u32, height: u32) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    RgbImage::from_fn(width, height, |_, y| Rgb([255 - (255 * y / height) as u8, 0, 0])).write_to(&mut Cursor::new(&mut bytes), ImageFormat::Png).expect("a PNG encoded");
+    bytes
+}
+
+/// What says it is a PNG and is not one past its signature.
+pub const BROKEN_PNG: &[u8] = b"\x89PNG\r\n\x1a\nnot an image";
 
 // ---------------------------------------------------------------- input
 

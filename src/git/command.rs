@@ -1,5 +1,6 @@
 use std::fmt;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::domain::{sort_by_directory, FileDiff, Revision};
@@ -53,12 +54,28 @@ impl Git {
     }
 
     pub(super) fn run(&self, args: &[&str]) -> GitResult<String> {
+        Ok(String::from_utf8_lossy(&self.run_bytes(args)?).into_owned())
+    }
+
+    // What git printed as it printed it: a file's content may not be text.
+    fn run_bytes(&self, args: &[&str]) -> GitResult<Vec<u8>> {
         let output = self.command(args).output().map_err(|error| GitError::Failed(error.to_string()))?;
         if !output.status.success() {
             return Err(GitError::Failed(String::from_utf8_lossy(&output.stderr).trim().to_string()));
         }
 
-        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+        Ok(output.stdout)
+    }
+
+    /// A file as `revision` left it, or as it is in the working tree without one. `path` is from the repository's root,
+    /// as a patch names it.
+    pub fn content(&self, revision: Option<&Revision>, path: &str) -> GitResult<Vec<u8>> {
+        if let Some(revision) = revision {
+            return self.run_bytes(&["show", "--no-textconv", &format!("{}:{path}", revision.as_str())]);
+        }
+        // As a pager glance may run from a subdirectory, while the patch names the file from the root.
+        let root = self.run(&["rev-parse", "--show-toplevel"])?;
+        fs::read(Path::new(root.trim()).join(path)).map_err(|error| GitError::Failed(error.to_string()))
     }
 
     // A branch opens on its tip commit; "--" keeps a branch named like a file a revision. `git show` of a stash

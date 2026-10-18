@@ -1108,12 +1108,12 @@ fn a_log_whose_files_are_known_but_empty_and_a_blame_without_path_draw() {
 
 #[test]
 fn a_binary_and_a_rename_only_file_open_on_what_git_said() {
-    let text = "diff --git a/logo.png b/logo.png\nBinary files a/logo.png and b/logo.png differ\ndiff --git a/old.txt b/new.txt\nsimilarity index 100%\nrename from old.txt\nrename to new.txt\n";
+    let text = "diff --git a/font.woff2 b/font.woff2\nBinary files a/font.woff2 and b/font.woff2 differ\ndiff --git a/old.txt b/new.txt\nsimilarity index 100%\nrename from old.txt\nrename to new.txt\n";
     let mut app = app(text);
 
     key(&mut app, KeyCode::Enter);
     let binary = frame(&mut app);
-    assert!(binary.contains("Binary files a/logo.png and b/logo.png differ"), "{}", binary.text());
+    assert!(binary.contains("Binary files a/font.woff2 and b/font.woff2 differ"), "{}", binary.text());
     keys(&mut app, "jGk ");
     search(&mut app, "nothing");
     assert_eq!(screen_footer(&mut app), "aucun résultat");
@@ -1124,4 +1124,81 @@ fn a_binary_and_a_rename_only_file_open_on_what_git_said() {
     assert!(rename.line(3).contains("new.txt") && rename.line(3).contains("depuis old.txt"), "{}", rename.text());
     keys(&mut app, "jGY");
     assert_eq!(app.take_clipboard().as_deref(), Some(""));
+}
+
+// ---------------------------------------------------------------- image preview
+
+const HALF_BLOCK: &str = "▀";
+const IMAGE_UNAVAILABLE: &str = "aperçu de l'image indisponible";
+
+#[test]
+fn a_changed_png_opens_on_its_preview_rather_than_on_git_binary_note() {
+    let repo = TempRepo::new("png-preview");
+    repo.write("logo.png", &png(40, 40));
+    let mut app = repo.app();
+    assert!(frame(&mut app).selected().is_some_and(|row| row.contains("? logo.png")));
+
+    key(&mut app, KeyCode::Enter);
+
+    let preview = frame(&mut app);
+    assert!(preview.line(3).contains("logo.png"), "{}", preview.text());
+    assert!(preview.contains(HALF_BLOCK), "{}", preview.text());
+    assert!(!preview.contains("Binary files") && !preview.contains(IMAGE_UNAVAILABLE), "{}", preview.text());
+}
+
+#[test]
+fn a_corrupt_png_opens_on_the_fallback_message() {
+    let repo = TempRepo::new("png-corrupt");
+    repo.write("broken.png", BROKEN_PNG);
+    let mut app = repo.app();
+
+    key(&mut app, KeyCode::Enter);
+
+    let fallback = frame(&mut app);
+    assert!(fallback.contains(IMAGE_UNAVAILABLE), "{}", fallback.text());
+    assert!(!fallback.contains(HALF_BLOCK), "{}", fallback.text());
+}
+
+#[test]
+fn a_committed_png_previews_the_version_of_its_commit_not_the_working_tree() {
+    let repo = TempRepo::new("png-commit");
+    repo.git(&["checkout", "--quiet", "-b", "feature"]);
+    repo.write("logo.png", &png(40, 40));
+    repo.commit("logo.png", "Add the logo");
+    repo.write("logo.png", BROKEN_PNG);
+    let mut app = repo.app();
+
+    keys(&mut app, "c");
+    key(&mut app, KeyCode::Enter);
+    key(&mut app, KeyCode::Enter);
+
+    let preview = frame(&mut app);
+    assert!(preview.contains(HALF_BLOCK), "{}", preview.text());
+}
+
+#[test]
+fn a_piped_image_missing_from_the_working_tree_shows_the_fallback_and_its_neighbour_its_diff() {
+    let text = "diff --git a/glance-nowhere/logo.png b/glance-nowhere/logo.png\nBinary files a/glance-nowhere/logo.png and b/glance-nowhere/logo.png differ\ndiff --git a/glance-nowhere/notes.txt b/glance-nowhere/notes.txt\n--- a/glance-nowhere/notes.txt\n+++ b/glance-nowhere/notes.txt\n@@ -1 +1 @@\n-old note\n+new note\n";
+    let mut app = app(text);
+
+    key(&mut app, KeyCode::Enter);
+    assert!(frame(&mut app).contains(IMAGE_UNAVAILABLE));
+
+    keys(&mut app, "n");
+    let diff = frame(&mut app);
+    assert!(diff.contains("new note") && !diff.contains(IMAGE_UNAVAILABLE), "{}", diff.text());
+    keys(&mut app, "p");
+    assert!(frame(&mut app).contains(IMAGE_UNAVAILABLE));
+}
+
+#[test]
+fn a_preview_survives_a_tiny_terminal() {
+    let repo = TempRepo::new("png-tiny");
+    repo.write("logo.png", &png(400, 300));
+    let mut app = repo.app();
+    key(&mut app, KeyCode::Enter);
+
+    render(&mut app, 10, 5);
+    render(&mut app, 1, 1);
+    assert!(frame(&mut app).contains(HALF_BLOCK));
 }

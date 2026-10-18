@@ -58,7 +58,7 @@ fn no_screen_binds_a_key_twice_across_its_layers() {
     let pushed: Vec<(&str, Box<dyn View>)> = vec![
         ("base picker", Box::new(BasePickerView::default())),
         ("commit files", Box::new(CommitFilesView::new(commit))),
-        ("diff", Box::new(DiffView::new(files(), 0, theme))),
+        ("diff", Box::new(DiffView::new(files(), 0, None, theme))),
     ];
 
     for (name, view) in roots.iter().map(|view| ("root", *view)).chain(pushed.iter().map(|(name, view)| (*name, view.as_ref()))) {
@@ -94,7 +94,7 @@ fn every_screen_names_at_least_one_key_and_global_keys_are_named() {
         Box::new(CommitsView::default()),
         Box::new(BlameView::default()),
         Box::new(BasePickerView::default()),
-        Box::new(DiffView::new(files(), 1, theme)),
+        Box::new(DiffView::new(files(), 1, None, theme)),
     ];
 
     for view in &views {

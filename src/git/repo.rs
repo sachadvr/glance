@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::domain::{sort_by_directory, Commit, FileDiff, Status};
 use crate::input::{parse_log, parse_patch};
@@ -33,6 +33,11 @@ pub struct Repo {
 impl Repo {
     pub fn discover() -> GitResult<Repo> {
         Repo::discover_from(&Git::here())
+    }
+
+    /// The repository holding `directory`, wherever glance runs from: the tests open throwaway ones.
+    pub fn open(directory: impl Into<PathBuf>) -> GitResult<Repo> {
+        Repo::discover_from(&Git::at(directory))
     }
 
     fn discover_from(start: &Git) -> GitResult<Repo> {
@@ -350,6 +355,25 @@ mod tests {
 
         assert_eq!(files.iter().map(|file| file.path.as_str()).collect::<Vec<_>>(), ["sub/n.rs", "sub/m.rs"]);
         assert_eq!(nested.iter().map(|file| file.path.as_str()).collect::<Vec<_>>(), ["src/sub/n.rs", "src/sub/m.rs"]);
+    }
+
+    #[test]
+    fn content_reads_a_file_at_a_revision_or_in_the_working_tree_from_any_subdirectory() {
+        let temp = TempRepo::new("content");
+        let head = Revision::Hash(temp.git(&["rev-parse", "HEAD"]));
+        fs::write(temp.root.join("src/a.rs"), [0x89, b'P', b'N', b'G', 0xff]).unwrap();
+        let from_subdirectory = Git::at(temp.root.join("src"));
+
+        assert_eq!(from_subdirectory.content(Some(&head), "src/a.rs").unwrap(), b"fn a() {}\n");
+        assert_eq!(from_subdirectory.content(None, "src/a.rs").unwrap(), [0x89, b'P', b'N', b'G', 0xff]);
+        assert!(from_subdirectory.content(None, "missing.png").is_err());
+        assert!(from_subdirectory.content(Some(&head), "notes.txt").is_err());
+    }
+
+    #[test]
+    fn open_finds_the_repository_of_a_subdirectory() {
+        let temp = TempRepo::new("open");
+        assert_eq!(Repo::open(temp.root.join("src")).unwrap().branch, "feature");
     }
 
     #[test]

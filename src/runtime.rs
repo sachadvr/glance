@@ -7,6 +7,7 @@ use std::time::Duration;
 use ratatui::crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind};
 use ratatui::crossterm::execute;
 use ratatui::DefaultTerminal;
+use ratatui_image::picker::Picker;
 
 use crate::app::App;
 use crate::terminal::{copy_to_clipboard, set_pointer};
@@ -16,6 +17,8 @@ const BACKGROUND_TICK: Duration = Duration::from_millis(200);
 
 pub fn run(mut app: App) -> Result<(), Box<dyn Error>> {
     let mut terminal = ratatui::init();
+    // Asked on the alternate screen, before the mouse is captured and any event read: its answer comes as input.
+    app.set_picker(Picker::from_query_stdio().unwrap_or_else(|_| Picker::halfblocks()));
     execute!(io::stdout(), EnableMouseCapture)?;
     let outcome = event_loop(&mut terminal, &mut app);
     set_pointer(false)?;

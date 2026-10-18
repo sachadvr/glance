@@ -61,6 +61,7 @@ pub struct FileDiff {
 }
 
 const TEST_DIRECTORIES: [&str; 5] = ["tests", "test", "__tests__", "spec", "specs"];
+const IMAGE_EXTENSIONS: [&str; 5] = ["png", "jpg", "jpeg", "gif", "webp"];
 
 impl FileDiff {
     pub fn new(path: impl Into<String>) -> Self {
@@ -82,6 +83,16 @@ impl FileDiff {
         let is_test_named = stem.ends_with("Test") || stem.ends_with("_test") || self.name().contains(".test.") || self.name().contains(".spec.");
 
         in_test_directory || is_test_named
+    }
+
+    // The name decides, not the bytes: they are read only once the file opens, and a broken image still deserves to be
+    // told so rather than shown as "Binary files differ". A deleted image has no version left to show.
+    pub fn shows_image(&self) -> bool {
+        let Some((_, extension)) = self.name().rsplit_once('.') else {
+            return false;
+        };
+
+        self.status != Status::Deleted && IMAGE_EXTENSIONS.iter().any(|image| extension.eq_ignore_ascii_case(image))
     }
 }
 
@@ -117,6 +128,24 @@ mod tests {
         assert!(is_test("pkg/feed_test.go"));
         assert!(!is_test("src/Core/Testing/Contest.php"));
         assert!(!is_test("docs/TESTING.md"));
+    }
+
+    #[test]
+    fn shows_image_recognises_image_extensions_whatever_their_case() {
+        let shows_image = |path: &str| FileDiff::new(path).shows_image();
+        assert!(shows_image("assets/logo.png"));
+        assert!(shows_image("photo.JPG"));
+        assert!(shows_image("a.jpeg") && shows_image("a.gif") && shows_image("a.webp"));
+        assert!(!shows_image("logo.svg"));
+        assert!(!shows_image("docs/spec.pdf"));
+        assert!(!shows_image("png"));
+    }
+
+    #[test]
+    fn shows_image_skips_a_deleted_image() {
+        let mut file = FileDiff::new("logo.png");
+        file.status = Status::Deleted;
+        assert!(!file.shows_image());
     }
 
     #[test]
