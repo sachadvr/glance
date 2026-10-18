@@ -5,7 +5,7 @@ can point to `glance`) and a branch browser when run in a repository. Read `ARCH
 
 ## Toolchain
 
-Rust 1.89+ (edition 2024) and git. Machine-specific notes (toolchain paths, local install) belong in
+Rust 1.90+ (edition 2024) and git. Machine-specific notes (toolchain paths, local install) belong in
 `CLAUDE.local.md`, which is git-ignored.
 
 - Check: `cargo clippy --all-targets` (must be silent) and `cargo test` (all green, no `#[ignore]` without a `BUG:` reason).

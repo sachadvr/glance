@@ -13,7 +13,7 @@ Open an issue with:
 
 ## Building and testing
 
-You need Rust 1.89 or later and git.
+You need Rust 1.90 or later and git.
 
 ```sh
 cargo build
