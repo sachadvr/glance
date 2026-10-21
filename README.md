@@ -12,7 +12,7 @@ Diffs, logs, stashes and blames become lists you can scroll, search and click th
 
 ## A note from the author
 
-I am still learning Rust: I know the basics, and **most of this code was written with the help of AI**. I designed it, reviewed it, tested it, and use it every day. But an experienced Rustacean will surely find things to improve: idioms, performance, error handling, structure.
+I am still learning Rust: I know the basics, not the trickier corners. I wrote glance in Rust to see how far the performance could go — the same interface used to be a React TUI running only on my machine. An experienced Rustacean will surely find things to improve: idioms, performance, error handling, structure.
 
 **Contributions are very welcome**, from typo fixes to deep refactors, and so is feedback on what could be done better. See [Contributing](#contributing).
 
