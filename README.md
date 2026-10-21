@@ -3,7 +3,7 @@
 # glance
 
 **A git pager and branch browser for the terminal.**
-Diffs, logs, stashes and blames become lists you can scroll, search and click through — instead of a wall of text in `less`.
+Diffs, logs, stashes and blames become lists you can scroll, search and click through instead of a wall of text in `less`.
 
 [![CI](https://github.com/sachadvr/glance/actions/workflows/ci.yml/badge.svg)](https://github.com/sachadvr/glance/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
@@ -12,7 +12,7 @@ Diffs, logs, stashes and blames become lists you can scroll, search and click th
 
 ## A note from the author
 
-I am still learning Rust: I know the basics, not the trickier corners. I wrote glance in Rust to see how far the performance could go — the same interface used to be a React TUI running only on my machine. An experienced Rustacean will surely find things to improve: idioms, performance, error handling, structure.
+I am still learning Rust: I know the basics, not the trickier corners. I wrote glance in Rust to see how far the performance could go: the same interface used to be a React TUI running only on my machine. An experienced Rustacean will surely find things to improve: idioms, performance, error handling, structure.
 
 **Contributions are very welcome**, from typo fixes to deep refactors, and so is feedback on what could be done better. See [Contributing](#contributing).
 
